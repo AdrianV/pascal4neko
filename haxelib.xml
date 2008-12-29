@@ -1,0 +1,5 @@
+<project name="pascal4neko" url="http://lib.haxe.org/p/pascal4neko" license="Public">
+    <user name="AdrianV"/>
+    <description>with pascal4neko you can write neko .ndlls in object pascal (freepascal or delphi), or to embedd neko modules in pascal.</description>
+    <version name="1.1">Changed License to MPL. Cleaned the code. Now it includes a sample Aplication Server, which uses a modified visualsynapse HTTP Server.</version>
+</project>
