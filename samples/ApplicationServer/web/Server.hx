@@ -1,30 +1,26 @@
-class Server {
-  static var ctx;
-  var hits: Int;
-  function new() { hits = 0;}
-  function foo(a: Array<Int>) {
-    var r= 0;
-    for (x in 0...a.length) {
-      r += a[x];
-    }
-    return r; 
-  }
-  function blah(){
-    hits += 1; 
-    return hits; 
-  }
+import haxe.remoting.HttpConnection;
 
-  static function handleRequest() {
-    var isNekoRequest = haxe.remoting.HttpConnection.handleRequest(ctx);
-    if( isNekoRequest )
+#if neko
+import haxe.remoting.Context;
+import neko.Web;
+#end
+
+class Server 
+{
+  function new() { }
+
+  public function foo(x: Int, y: Int): Int { return x + y; }
+
+  static var inst: Server;
+	
+	static function main() {
+    var ctx = new haxe.remoting.Context();
+		inst = new Server();
+    ctx.addObject("Server", inst);
+    if( haxe.remoting.HttpConnection.handleRequest(ctx) )
       return;
     // handle normal request
     neko.Lib.print("This is a remoting server !");
-  }
-  static function main() {
-    ctx = new haxe.remoting.Context();
-    ctx.addObject("Server",new Server());
-    neko.Web.cacheModule(handleRequest);
-    handleRequest();
   } 
+	
 }

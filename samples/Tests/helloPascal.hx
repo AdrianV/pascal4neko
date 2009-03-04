@@ -9,6 +9,7 @@ typedef THello = {
 class XObject {
   public function ClassName(): String {return 'XObject';}
   public function new(): Void {}
+  public static function StaticFunction() {return 1;}
 }
 
 class XComponent extends XObject {
@@ -90,17 +91,16 @@ class HelloPascal {
   static function __init__() {
     if (false)
     untyped {
-      trace(Boot.__classes);
+      trace(neko.Boot.__classes);
 	    Test2.__super__ = TObject;
 	    __dollar__objsetproto(Test2.prototype, TObject.prototype);
 	  }
     if (true)
 	  untyped {
-	    var cl = Boot.__classes;
-	    neko.Lib.load('$$', 'TObj1_init', 1) (cl);
-	    TObject = Reflect.field(cl, 'TObject');
-	    TComponent = Reflect.field(cl, 'TComponent');
-	    TForm = Reflect.field(cl, 'TForm');
+	    neko.Lib.load('$$', 'TObj1_init', 1) (neko.Boot.__classes);
+	    TObject = neko.Boot.__classes.TObject;
+	    TComponent = neko.Boot.__classes.TComponent;
+	    TForm = neko.Boot.__classes.TForm;
 	    Test2.__super__ = TObject;
 	    untyped __dollar__objsetproto(Test2.prototype, TObject.prototype);
     }    
@@ -140,13 +140,14 @@ class HelloPascal {
 		trace(ob1.Data);
 		ob1.Data += 127;
 		trace(ob1.Data);
-		trace(Reflect);
+		//trace(Reflect);
 		var i: Int;
 		//for (i in 0...100000) {
 		//  ob1 = new TObj1(ob1.Data + i); 
     //}
     //trace(ob1.Data);
     var ob2: TObject = new TObject();
+    trace('Halle');
     trace(ob2.ClassName());
     trace(TForm);
     trace(TObject);

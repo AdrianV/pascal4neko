@@ -131,7 +131,6 @@ const
   invalid_comparison =	$FE;
 
 type
-  ENekoException = class(Exception);
   Tint_val = Integer; // !! not 64 bit compatible
   Pint_val = ^Tint_val;
   Tval_type =  Longint;
@@ -156,11 +155,22 @@ type
   Pvalue = ^value;
   val_array = array [0..MaxInt div (sizeof(value)+1)] of value;
   Pval_array = ^val_array;
+  TArrayInfo = record
+    a: Pval_array;
+    l: Integer;
+    procedure FromValue(v: value);
+    function Get(Index: Integer; Def: value): value; inline;
+  end;
   Pobjtable = ^Tobjtable;
 
   Pbuffer = ^Tbuffer;
 
   Tfloat = double;
+  ENekoException = class(Exception)
+  public
+    constructor CreateExc(Exc: value);
+  end;
+
 
 
 
@@ -320,8 +330,10 @@ function val_array_ptr(v: value): Pval_array; {$IFDEF COMPILER_INLINE} inline; {
 function get_array(v: value): TNekoArray; overload;
 function get_array(p: Pvalue; cnt: Integer): TNekoArray; overload;
 function alloc_string(const S: string): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function val_call(f: value; const args: array of value): value; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_call(f: value; const args: array of value; exc: Pvalue = nil): value; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue = nil): value; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_is_HaxeString(v: value): Boolean;
+function val_HaxeString(v: value): string;
 
 var
   alloc_abstract: function (k: vkind; data: Pointer): value; cdecl;
@@ -414,8 +426,11 @@ var
   val_false: value;
   neko_error: procedure;
   id_string: Tfield;
+  id_length: Tfield;
   id_array: Tfield;
   id_Self: Tfield;
+  id_interface: Tfield;
+  id_object: Tfield;
   id_prototype: Tfield;
   id_new: Tfield;
   id__construct__: Tfield;
@@ -423,11 +438,19 @@ var
   id__super__: Tfield;
   id__class__: Tfield;
   id_cache: Tfield;
+  id_constructor: Tfield;
 
   __kind_k_object: Tvkind;
   k_object: vkind = @ __kind_k_object;
 
+  __kind_k_interface: Tvkind;
+  k_interface: vkind = @ __kind_k_interface;
 
+
+procedure add_function(c: value; const Name: string; code: Pointer; Args: Integer);
+function IInterface_(v: value): IInterface;
+procedure IInterface_free(v: value); cdecl;
+function IInterface_GC(I: IInterface): value;
 procedure IterateFields(o: value; iter: TFieldIterProc; data: Pointer);
 procedure IterateFieldsMethod(o: value; iter: TFieldIterMethod; data: Pointer);
 procedure LoadNeko;
@@ -435,10 +458,12 @@ procedure UnloadNeko;
 function LoadModule(const AFile: string): value;
 procedure ExecuteModuleMain(AModule: value);
 function ReportException(vm: Pneko_vm; exc: value; isExc: BOOL ): string;
+procedure TPointer_free(v: value); cdecl;
 procedure TObject_free(v: value); cdecl;
 function TObject_NekoLink(this: value; Self: TObject): value;
-function TObject_wrapper(Self: TObject): value; overload; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function TObject_wrapper(Self: TObject; OwnedByGC: Boolean): value; overload;
+function TObject_wrapper(Self: TObject): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function TObject_GC(Self: TObject): value;
+function TObject_(v: value): TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function TObject_Of(v: value): TObject;
 function TObject_Self: TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure StreamReader(p: readp; buf: Pointer; size: Integer); cdecl;
@@ -464,14 +489,9 @@ type
 var
   HNEKO: HMODULE;
 
-function val_call(f: value; const args: array of value): value;
+procedure add_function(c: value; const Name: string; code: Pointer; Args: Integer);
 begin
-  Result:= val_callEx(nil, f, @args[0], Length(args), nil);
-end;
-
-function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue): value;
-begin
-  Result:= val_callEx(o, val_field(o, f), @args[0], Length(args), exc);
+  alloc_field(c, val_id(PChar(Name)), alloc_function(code, Args, PChar(Name)));
 end;
 
 function alloc_string(const S: string): value;
@@ -610,8 +630,11 @@ begin
     else
       Set8087CW($27F);
     id_string:= val_id('__s');
+    id_length:= val_id('length');
     id_array:= val_id('__a');
     id_Self:= val_id('__self');
+    id_interface:= val_id('__i');
+    id_object:= val_id('__o');
     id_prototype:= val_id('prototype');
     id_new:= val_id('new');
     id__construct__:= val_id('__construct__');
@@ -619,7 +642,8 @@ begin
     id__super__:= val_id('__super__');
     id__class__:= val_id('__class__');
     id_cache:= val_id('cache');
-
+    id_constructor:= val_id('constructor');
+    
   except
     UnloadNeko;
   end;
@@ -766,7 +790,8 @@ end;
 
 function val_int(v: value): Integer;
 begin
-  Result:= Tint_val(v) shr 1;
+  //Result:= Integer(Tint_val(v)) shr 1;
+  Result:= (Tint_val(v) shr 1) OR (Tint_val(v) and $80000000);
 end;
 
 function val_float(v: value): Double;
@@ -827,10 +852,63 @@ begin
   Result:= @varray(v).ptr;
 end;
 
-procedure TObject_free(v: value); cdecl;
+function val_is_HaxeString(v: value): Boolean;
+begin
+  Result:= (val_is_object(v) and val_is_string(val_field(v, id_string))) or val_is_string(v);
+end;
+
+function val_HaxeString(v: value): string;
+begin
+  Result:= '';
+  if val_is_object(v) then
+    v:= val_field(v, id_string);
+  if val_is_string(v) then
+    Result:= val_string(v);
+end;
+
+function val_call(f: value; const args: array of value; exc: Pvalue): value;
+var
+  n: Integer;
+begin
+  n:= Length(args);
+  val_check_function(f, n);
+  Result:= val_callEx(nil, f, @args[0], n, exc);
+end;
+
+function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue): value;
+var
+  vf: value;
+  n: Integer;
+begin
+  vf:= val_field(o, f);
+  n:= Length(args);
+  val_check_function(vf, n);
+  Result:= val_callEx(o, vf, @args[0], n, exc);
+end;
+
+procedure TPointer_free(v: value); cdecl;
 begin
   //if val_is_abstract(v) and val_is_kind(v, k_object) then
-  TObject(val_data(v)).Free;
+  Dispose(vabstract(v).data);
+end;
+
+procedure TObject_free(v: value); cdecl;
+var
+  o: TObject;
+begin
+  //if val_is_abstract(v) and val_is_kind(v, k_object) then
+  o:= TObject(vabstract(v).data);
+  vabstract(v).data:= nil;
+  if o is TInterfacedObject then begin
+    if TInterfacedObject(o).RefCount = 0 then
+      o.Free;
+  end else
+    o.Free;
+end;
+
+procedure IInterface_free(v: value); cdecl;
+begin
+  IInterface(vabstract(v).data):= nil;
 end;
 
 function TObject_wrapper(Self: TObject): value;
@@ -838,14 +916,20 @@ begin
   Result:= alloc_abstract(k_object, Self);
 end;
 
+function TObject_(v: value): TObject;
+begin
+  if val_is_kind(v, k_object) then
+    Result:= TObject(val_data(v))
+  else Result:= TObject(v);
+end;
+
 function TObject_Of(v: value): TObject;
 begin
   Result:= nil;
-  if val_is_object(v) then begin
+  if val_is_object(v) then
     v:= val_field(v, id_Self);
-    if val_is_kind(v, k_object) then
-      Result:= TObject(val_data(v));
-  end;
+  if val_is_kind(v, k_object) then
+    Result:= TObject(val_data(v));
 end;
 
 function TObject_Self: TObject;
@@ -853,18 +937,34 @@ begin
   Result:= TObject_Of(val_this);
 end;
 
-function TObject_wrapper(Self: TObject; OwnedByGC: Boolean): value;
+function IInterface_(v: value): IInterface;
+begin
+  if val_is_kind(v, k_interface) then
+    Result:= IInterface(val_data(v))
+  else Result:= IInterface(v);
+  //if Result <> nil then ?????
+  //  Result._AddRef;
+end;
+
+function IInterface_GC(I: IInterface): value;
+begin
+  I._AddRef;
+  Result:= alloc_abstract(k_interface, Pointer(I));
+  val_gc(Result, IInterface_free);
+end;
+
+function TObject_GC(Self: TObject): value;
 begin
   Result:= alloc_abstract(k_object, Self);
-  if OwnedByGC then
-    val_gc(Result, TObject_free);
+  val_gc(Result, TObject_free);
 end;
 
 function TObject_NekoLink(this: value; Self: TObject): value;
 begin
   Result:= this;
-  alloc_field(Result, id_Self, TObject_wrapper(Self, true));
+  alloc_field(Result, id_Self, TObject_GC(Self));
 end;
+
 function get_array(p: Pvalue; cnt: Integer): TNekoArray; overload;
 begin
   SetLength(Result, cnt);
@@ -988,6 +1088,41 @@ var
 begin
   lStream:= p;
   lStream.ReadBuffer(buf^, size);
+end;
+
+{ TArrayInfo }
+
+procedure TArrayInfo.FromValue(v: value);
+var
+  vl: value;
+begin
+  l:= -1;
+  if val_is_object(v) then begin
+    vl:= val_field(v, id_length);
+    if val_is_int(vl) then
+      l:= val_int(vl);
+    v:= val_field(v, id_array);
+  end;
+  if val_is_array(v) then begin
+    a:= val_array_ptr(v);
+    if l = -1 then
+      l:= val_array_size(v);
+  end;
+end;
+
+function TArrayInfo.Get(Index: Integer; Def: value): value;
+begin
+  if (Index >= 0) and (Index < l) then
+    Result:= a^[Index]
+  else
+    Result:= Def;
+end;
+
+{ ENekoException }
+
+constructor ENekoException.CreateExc(Exc: value);
+begin
+  Create(ReportException(neko_vm_current(), Exc, True ));
 end;
 
 initialization
