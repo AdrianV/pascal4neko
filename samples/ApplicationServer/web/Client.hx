@@ -14,7 +14,7 @@ class Client
     trace(v);
   }
   static function test2() {
-    var URL = "remoting.n";
+    var URL = #if neko "http://localhost:1081/" + #end "remoting.n";
     var cnx = HttpConnection.urlConnect(URL);
 		var proxy = new CnxServer(cnx.Server);
 		var res: Int = proxy.foo(1, 2);
@@ -22,7 +22,7 @@ class Client
   }
 
   static function test() {
-    var URL = "remoting.n";
+    var URL = #if neko "http://localhost:1081/" + #end "remoting.n";
     var cnx = haxe.remoting.HttpAsyncConnection.urlConnect(URL);
     cnx.setErrorHandler( function(err) trace("Error : " + Std.string(err)) );
 		var proxy = new CnxServerAsync(cnx.Server);
@@ -32,6 +32,9 @@ class Client
 	  
 	static function main() {
     //if (haxe.Firebug.detect()) haxe.Firebug.redirectTraces();
+    #if neko
+    test();
+    #end
   }
 
 	
