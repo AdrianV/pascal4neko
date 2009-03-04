@@ -1,3 +1,5 @@
+// JCL_DEBUG_EXPERT_GENERATEJDBG OFF
+// JCL_DEBUG_EXPERT_INSERTJDBG OFF
 program EmbeddedNeko;
 
 {$APPTYPE CONSOLE}
@@ -20,23 +22,6 @@ type
   TObj2 = class
     function DoSomething(A, B: TObj1): Integer;
   end;
-
-function NewNekoInstance(out AInstance:Value): Value;
-var
-  cl: value;
-begin
-  AInstance:= val_null;
-  Result:= val_this;
-  writeln('test:');
-  writeln(ValueToString(Result));
-  cl:= val_field(Result, id_prototype);
-  if val_is_object(cl) then begin
-    //Result:= alloc_object(cl);
-    Result:= alloc_object(nil);
-    vobject(Result).proto:= vobject(cl);
-    AInstance:= Result;
-  end;
-end;
 
 function TObject_new(): value; cdecl;
 var
@@ -159,7 +144,7 @@ begin
   if val_is_null(t) then begin
     p:= alloc_object(nil);
     alloc_field(p, val_id('ClassName'), alloc_function(@TObject_ClassName, 0, 'ClassName'));
-    DeclareClass(cl, p, 'TObject', '', @TObject_new, 0, @TObject_cons);
+    DeclareClass(cl, p, 'TObject', '', @TObject_new, 0);
     p:= alloc_object(nil);
     DeclareClass(cl, p, 'TComponent', 'TObject', @TComponent_new, 1);
     p:= alloc_object(nil);
@@ -172,7 +157,7 @@ begin
   p:= val_field(t, id_prototype);
   alloc_field(p, val_id('get_Data'), alloc_function(@TObj1_getData, 0, 'get_Data'));
   alloc_field(p, val_id('set_Data'), alloc_function(@TObj1_setData, 1, 'set_Data'));
-  //alloc_field(t, id_new, alloc_function(@TObj1_new, 1, ''));
+  alloc_field(t, id_new, alloc_function(@TObj1_new, 1, ''));
   //alloc_field(t, id__construct__, alloc_function(@TObj1_new, 1, ''));
   Result:= t;
 end;

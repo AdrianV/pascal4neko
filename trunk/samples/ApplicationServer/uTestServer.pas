@@ -31,6 +31,7 @@ procedure TForm2.FormCreate(Sender: TObject);
 begin
   vsHTTPServer1.Active:= False;
   vsHTTPServer1.LoadSettings('TestServer.ini');
+  vsHTTPServer1.RegisterPHP('C:\xampp\php\php-cgi.exe');
   vsHTTPServer1.RegisterPreParser('', '.n', '', '', TModeNekoParser);
   vsHTTPServer1.RegisterDir(IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + 'web', '');
   vsHTTPServer1.ThreadSafe:= False;

@@ -69,10 +69,21 @@ type
     constructor Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
     function DoRequest: Boolean;
   end;
+  TContext = record
+	  r: THTTPRequest;
+	  main: value;
+	  post_data: value;
+	  content_type: value;
+	  headers_sent: Boolean;
+    classes: value;
+  end;
+  PContext = ^TContext;
 
 var
   __k_mod_neko: Tvkind;
   k_mod_neko: vkind = @ __k_mod_neko;
+
+function CONTEXT: PContext; inline;
 
 implementation
 {$WRITEABLECONST ON}
@@ -93,14 +104,6 @@ type
     use_prim_stats: Boolean;
     gc_period: Integer;
   end;
-  TContext = record
-	  r: THTTPRequest;
-	  main: value;
-	  post_data: value;
-	  content_type: value;
-	  headers_sent: Boolean;
-  end;
-  PContext = ^TContext;
 
 var
   //cache_root: mt_local = nil;
@@ -164,12 +167,7 @@ begin
 	c := THTTPRequest(param);
 	if c = nil then c := CONTEXT().r;
 	if (size = -1) then size := strlen(data);
-	//ap_soft_timeout("Client Timeout",c->r);
-	c.H.SendHeaders;
-  //c.H.Log(data);
-  //c.FRequest.H.FSock.SendString(IntToStr( c.FRequest.H.FIPInfo.ConnectionHandle) + ' :');
-  c.H.FSock.SendBuffer(data, size);
-	//ap_kill_timeout(c->r);
+  c.H.SendData(data, size);
 end;
 
 procedure null_print(const data: PChar; size: Integer; param: Pointer); cdecl;
@@ -348,8 +346,8 @@ begin
   s:= RequestParams;
   //SplitStringAt(s, '?');
   while s <> '' do begin
-    s1:= SplitStringAt(s,'&');
-    n:= SplitStringAt(s1, '=');
+    s1:= SplitString(s,'&');
+    n:= SplitString(s1, '=');
     Result:= AddToTable(Result, n, s1);
   end;
 end;
@@ -421,6 +419,48 @@ begin
   Result:= val_null;
 end;
 
+{ INIT }
+procedure InitModNeko;
+const
+  InitDone: Boolean = False;
+  CExport: array [0..20] of TExportInfo = (
+    (Name: 'cgi_get_cwd'; Func: @cgi_get_cwd; Args: 0),
+    (Name: 'cgi_set_main'; Func: @cgi_set_main; Args: 1),
+    (Name: 'get_cookies'; Func: @get_cookies; Args: 0),
+    (Name: 'set_cookie'; Func: @set_cookie; Args: 2),
+    (Name: 'get_host_name'; Func: @get_host_name; Args: 0),
+    (Name: 'get_client_ip'; Func: @get_client_ip; Args: 0),
+    (Name: 'get_uri'; Func: @get_uri; Args: 0),
+    (Name: 'redirect'; Func: @redirect; Args: 1),
+    (Name: 'get_params'; Func: @get_params; Args: 0),
+    (Name: 'get_params_string'; Func: @get_params_string; Args: 0),
+    (Name: 'get_post_data'; Func: @get_post_data; Args: 0),
+    (Name: 'set_header'; Func: @set_header; Args: 2),
+    (Name: 'set_return_code'; Func: @set_return_code; Args: 1),
+    (Name: 'get_client_header'; Func: @get_client_header; Args: 1),
+    (Name: 'get_client_headers'; Func: @get_client_headers; Args: 0),
+    (Name: 'parse_multipart_data'; Func: @parse_multipart_data; Args: 2),
+    (Name: 'cgi_flush'; Func: @cgi_flush; Args: 0),
+    (Name: 'cgi_get_config'; Func: @cgi_get_config; Args: 0),
+    (Name: 'cgi_command'; Func: @cgi_command; Args: 1),
+    (Name: 'get_http_method'; Func: @get_http_method; Args: 0),
+    (Name: 'log_message'; Func: @log_message; Args: 1)
+  );
+
+var
+  loader, v: value;
+begin
+  if InitDone then exit;
+  InitDone:= True;
+  AddExportTable(CExport, 'mod_neko');
+  LoadNeko;
+  loader:= neko_default_loader(nil, 0);
+  v:= val_ocall(loader, val_id('loadprim'), [alloc_string('std@put_env'), alloc_int(2)]);
+  val_call2(v, alloc_string('MOD_NEKO'), alloc_string('1'));
+  neko_vm_select(nil);
+  Set8087CW($27F);
+end;
+
 { TModeNekoParser }
 
 procedure TModeNekoParser.CacheModule(AModule: TCacheMod; r: THTTPRequest;
@@ -448,7 +488,8 @@ begin
         AModule.main^:= main;
       end;
     end else begin
-      Add(TCacheMod.Create(main, r.FileName, r.FTime));
+      AModule:= TCacheMod.Create(main, r.FileName, r.FTime);
+      Add(AModule);
     end;
   finally
     FCache.UnlockList;
@@ -480,8 +521,10 @@ end;
 
 function TModeNekoParser.Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode;
 begin
+  //InitModNeko;
   if FCache = nil then
     FCache:= TThreadList.Create;
+  Handler.FMode:= cmDONE;
   with THTTPRequest.Create(Self, Handler, FileName) do try
     H.FResponse.ResponseCode := 200;
     if not DoRequest then
@@ -489,7 +532,13 @@ begin
   finally
     Free;
   end;
-  Result := cmDone;
+  if (Handler.FResponse.ResponseCode <> 200)
+    or (Handler.FRequest.Command = 'POST')
+  then
+    Result := cmCLOSE
+  else
+    Result := cmDONE;
+  Result := cmDONE
 end;
 
 function TModeNekoParser.FindCache(r: THTTPRequest): TCacheMod;
@@ -586,8 +635,8 @@ begin
       H.Log(e.Message);
   end;
   if exc <> nil then begin
-    send_headers(@ctx);
-    H.FSock.SendString('Neko Exception');
+    //send_headers(@ctx);
+    H.SendData('Neko Exception');
   end;
   //H.Log('neko request done');
 end;
@@ -611,49 +660,8 @@ begin
   inherited;
 end;
 
-{ INIT }
-procedure InitModNeko;
-const
-  InitDone: Boolean = False;
-  CExport: array [0..20] of TExportInfo = (
-    (Name: 'cgi_get_cwd'; Func: @cgi_get_cwd; Args: 0),
-    (Name: 'cgi_set_main'; Func: @cgi_set_main; Args: 1),
-    (Name: 'get_cookies'; Func: @get_cookies; Args: 0),
-    (Name: 'set_cookie'; Func: @set_cookie; Args: 2),
-    (Name: 'get_host_name'; Func: @get_host_name; Args: 0),
-    (Name: 'get_client_ip'; Func: @get_client_ip; Args: 0),
-    (Name: 'get_uri'; Func: @get_uri; Args: 0),
-    (Name: 'redirect'; Func: @redirect; Args: 1),
-    (Name: 'get_params'; Func: @get_params; Args: 0),
-    (Name: 'get_params_string'; Func: @get_params_string; Args: 0),
-    (Name: 'get_post_data'; Func: @get_post_data; Args: 0),
-    (Name: 'set_header'; Func: @set_header; Args: 2),
-    (Name: 'set_return_code'; Func: @set_return_code; Args: 1),
-    (Name: 'get_client_header'; Func: @get_client_header; Args: 1),
-    (Name: 'get_client_headers'; Func: @get_client_headers; Args: 0),
-    (Name: 'parse_multipart_data'; Func: @parse_multipart_data; Args: 2),
-    (Name: 'cgi_flush'; Func: @cgi_flush; Args: 0),
-    (Name: 'cgi_get_config'; Func: @cgi_get_config; Args: 0),
-    (Name: 'cgi_command'; Func: @cgi_command; Args: 1),
-    (Name: 'get_http_method'; Func: @get_http_method; Args: 0),
-    (Name: 'log_message'; Func: @log_message; Args: 1)
-  );
-
-var
-  loader, v: value;
-begin
-  if InitDone then exit;
-  InitDone:= True;
-  AddExportTable(CExport, 'mod_neko');
-  LoadNeko;
-  loader:= neko_default_loader(nil, 0);
-  v:= val_ocall(loader, val_id('loadprim'), [alloc_string('std@put_env'), alloc_int(2)]);
-  val_call2(v, alloc_string('MOD_NEKO'), alloc_string('1'));
-  neko_vm_select(nil);
-  Set8087CW($27F);
-  //cache_root:= alloc_local();
-end;
 
 initialization
+  //Set8087CW($27F);
   InitModNeko;
 end.

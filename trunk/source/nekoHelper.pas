@@ -21,6 +21,7 @@
 { Some usefull (hopefully) routines for the use of the Neko Virtual Machine with Object Pascal.    }
 {                                                                                                  }
 {**************************************************************************************************}
+{$INCLUDE nekoDefs.inc}
 
 unit nekoHelper;
 
@@ -36,7 +37,14 @@ uses
 {$ENDIF}
   SysConst,
   SysUtils,
+{$IFDEF COMPILER6_UP}
+  Variants,
+{$ENDIF}
+{$IFDEF FPC}
+	Variants,
+{$ENDIF}
   Classes,
+  SyncObjs,
   neko;
 
 type
@@ -48,8 +56,12 @@ type
 
 procedure AddExportTable(const ATable: array of TExportInfo; const LibName: string = '');
 function AddToNekoTable(old: value; const data: array of value): value;
+procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
+function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
 function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0): value;
-function SplitStringAt(var S: string; const limit: string):string;
+function NewNekoInstance(out AInstance:Value): Value;
+function SplitString(var S: string; const limit: string):string;
+function ValueToVariant(v: value): Variant;
 
 implementation
 
@@ -62,8 +74,9 @@ type
 
 var
   ExportFunc: TStringList;
+  ExportProtect: TCriticalSection;
 
-function SplitStringAt(var S: string; const limit: string):string;
+function SplitString(var S: string; const limit: string):string;
 var
 	i: integer;
 begin
@@ -82,6 +95,7 @@ var
   i: Integer;
   p: PExportInfo;
 begin
+  if ExportFunc = nil then exit;
   for i := 0 to ExportFunc.Count - 1 do begin
     p:= PExportInfo(ExportFunc.Objects[i]);
     Dispose(p);
@@ -108,18 +122,45 @@ var
   p: PExportInfo;
   s: string;
 begin
-  for i := Low(ATable) to High(ATable) do begin
-    s:= ATable[i].Name;
-    if LibName <> '' then
-      s:= LibName + '@' + s;
-    if not ExportFunc.Find(s, x) then begin
-      New(p);
-      ExportFunc.InsertObject(x, s, TObject(p));
-    end else begin
-      p:= PExportInfo(ExportFunc.Objects[x]);
+  ExportProtect.Acquire;
+  try
+    if ExportFunc = nil then ExportFunc:= TStringList.Create;
+    for i := Low(ATable) to High(ATable) do begin
+      s:= ATable[i].Name;
+      if LibName <> '' then
+        s:= LibName + '@' + s;
+      if not ExportFunc.Find(s, x) then begin
+        New(p);
+        ExportFunc.InsertObject(x, s, TObject(p));
+      end else begin
+        p:= PExportInfo(ExportFunc.Objects[x]);
+      end;
+      p.CFunc:= ATable[i].Func;
+      p.NArgs:= ATable[i].Args;
     end;
-    p.CFunc:= ATable[i].Func;
-    p.NArgs:= ATable[i].Args;
+  finally
+    ExportProtect.Release;
+  end;
+end;
+
+procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
+var
+  i, x: Integer;
+  s: string;
+begin
+  if ExportFunc = nil then exit;
+  ExportProtect.Acquire;
+  try
+    for i := Low(ATable) to High(ATable) do begin
+      s:= ATable[i].Name;
+      if LibName <> '' then
+        s:= LibName + '@' + s;
+      if ExportFunc.Find(s, x) then begin
+        ExportFunc.Delete(x);
+      end;
+    end;
+  finally
+    ExportProtect.Release;
   end;
 end;
 
@@ -133,11 +174,16 @@ begin
   this:= val_this;
   if val_is_string(prim) then begin
     s:= val_string(prim); //, 0, '@');
-    if ExportFunc.Find(s, i) then begin
-      SplitStringAt(s, '@');
-      p:= PExportInfo(ExportFunc.Objects[i]);
-      Result:= alloc_function(p.CFunc, p.NArgs, PChar(s));
-      exit;
+    ExportProtect.Acquire;
+    try
+      if Assigned(ExportFunc) and ExportFunc.Find(s, i) then begin
+        SplitString(s, '@');
+        p:= PExportInfo(ExportFunc.Objects[i]);
+        Result:= alloc_function(p.CFunc, p.NArgs, PChar(s));
+        exit;
+      end;
+    finally
+      ExportProtect.Release;
     end;
     loader:= val_field(this, val_id('_loader'));
     Result:= val_ocall(loader, val_id('loadprim'), [prim, nargs], @exc);
@@ -168,11 +214,100 @@ begin
 	alloc_field(Result, val_id('loadmodule'), alloc_function(@myLoadModule, 2, 'loadmodule'));
 end;
 
+function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
+var
+  a: value;
+begin
+  if Cons=nil then
+    Cons:= New;
+  Result:= alloc_object(nil);
+  a:= alloc_array(1);
+  val_array_ptr(a)^[0]:= alloc_string(Name);
+  alloc_field(Result, id__name__, a);
+  alloc_field(Result, id_new, alloc_function(New, NParams, 'new'));
+  alloc_field(Result, id__construct__, alloc_function(Cons, NParams, '__construct__'));
+  if Super <> '' then begin
+    a:= val_field(cl, val_id(PChar(Super)));
+    if val_is_object(a) then begin
+      alloc_field(Result, id__super__, a);
+      vobject(proto).proto:= vobject(val_field(a, id_prototype)); //.proto;
+      //Result:= val_field(a, id__super__);
+    end;
+  end;
+  alloc_field(proto, id__class__, Result);
+  alloc_field(Result, id_prototype, proto);
+  alloc_field(cl, val_id(PChar(Name)), Result);
+end;
+
+function NewNekoInstance(out AInstance:Value): Value;
+var
+  cl: value;
+begin
+  AInstance:= val_null;
+  Result:= val_this;
+  cl:= val_field(Result, id_prototype);
+  if val_is_object(cl) then begin
+    //Result:= alloc_object(cl);
+    Result:= alloc_object(nil);
+    vobject(Result).proto:= vobject(cl);
+    AInstance:= Result;
+  end;
+end;
+
+function ValueToVariant(v: value): Variant;
+
+  function ArrayToVariant(a: value): Variant;
+  var
+    ai: TArrayInfo;
+    i: Integer;
+  begin
+    ai.FromValue(a);
+    Result:= VarArrayCreate([0, ai.l], varVariant);
+    for i := 0 to ai.l - 1 do
+      Result[i]:= ValueToVariant(ai.Get(i, val_null));
+  end;
+
+var
+  t: value;
+begin
+  Result:= Null;
+  if not val_is_null(v) then begin
+    if val_is_int(v) then
+      Result:= val_int(v)
+    else begin
+      case v^.t and 7 of
+        cVAL_NULL: begin
+
+        end;
+        cVAL_FLOAT: Result:= val_float(v);
+        cVAL_BOOL: Result:= v = val_true;
+        cVAL_STRING: Result:= String(val_string(v));
+        cVAL_OBJECT: begin
+          t:= val_field(v, id_string);
+          if val_is_string(t) then
+            Result:= String(val_string(t))
+          else begin
+            t:= val_field(v, id_array);
+            if val_is_array(t) then
+              Result:= ArrayToVariant(t)
+            else
+              Result:= ValueToString(v);
+          end;
+        end;
+        cVAL_ARRAY: Result:= ArrayToVariant(v);
+        cVAL_FUNCTION: ;
+        cVAL_ABSTRACT: ;
+      end;
+    end;
+  end;
+end;
+
 initialization
-  ExportFunc:= TStringList.Create;
+  ExportProtect:= TCriticalSection.Create;
 
 finalization
   CleanExport;
-  ExportFunc.Free;
+  FreeAndNil(ExportFunc);
+  FreeAndNil(ExportProtect);
 
 end.
