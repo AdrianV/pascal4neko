@@ -23,6 +23,7 @@
 {**************************************************************************************************}
 
 unit neko;
+{$MINSTACKSIZE $200000}
 
 interface
 {$IFDEF VER180}
@@ -160,6 +161,7 @@ type
     l: Integer;
     procedure FromValue(v: value);
     function Get(Index: Integer; Def: value): value; inline;
+    function SetVal(Index: Integer; val: value): value; inline;
   end;
   Pobjtable = ^Tobjtable;
 
@@ -1116,6 +1118,12 @@ begin
     Result:= a^[Index]
   else
     Result:= Def;
+end;
+
+function TArrayInfo.SetVal(Index: Integer; val: value): value;
+begin
+  if (Index >= 0) and (Index < l) then
+    a^[Index]:= val;
 end;
 
 { ENekoException }
