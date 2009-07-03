@@ -1048,7 +1048,6 @@ function LoadModule(const AFile: string): value;
 var
   loader, exc, f: value;
   args: array[0..1] of value;
-  b: Pbuffer;
   FPUCW: Word;
 begin
   loader:= neko_default_loader(nil, 0);
