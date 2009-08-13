@@ -1,5 +1,6 @@
 // JCL_DEBUG_EXPERT_GENERATEJDBG OFF
 // JCL_DEBUG_EXPERT_INSERTJDBG OFF
+// JCL_DEBUG_EXPERT_DELETEMAPFILE OFF
 program EmbeddedNeko;
 
 {$APPTYPE CONSOLE}
@@ -126,7 +127,7 @@ begin
     a:= val_field(cl, val_id(PChar(Super)));
     if val_is_object(a) then begin
       alloc_field(Result, id__super__, a);
-      vobject(proto).proto:= vobject(val_field(a, id_prototype)); //.proto;
+      SetProto(proto, val_field(a, id_prototype)); //.proto;
       //Result:= val_field(a, id__super__);
     end;
   end;
@@ -234,6 +235,8 @@ end;
 
 begin
   try
+    writeln('start');
+    readln;
     RunMe;
     UnloadNeko;
   except

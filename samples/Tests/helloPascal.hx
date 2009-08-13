@@ -67,6 +67,17 @@ class Xest2 extends XObject {
   }
 }
 
+class TObj0 {
+  public var Data(dynamic, dynamic): Int;
+  public function new(AData: Int) { 
+    trace('here');
+    this.Data = AData;
+  }
+  static var test: Int;
+  private function get_Data() { return test;}
+  private function set_Data(x) { test = x; return x;}
+}
+
 class TObj1 {
   public var Data(dynamic, dynamic): Int;
   public function new(AData: Int) { 
@@ -89,6 +100,10 @@ class HelloPascal {
   static var test: Dynamic -> Dynamic = neko.Lib.load('$$', 'test', 1);  
   //static var test2 = test(neko.Boot);
   static function __init__() {
+    trace(TObj0);
+    var o = new TObj0(123);
+    trace(TObj1);
+    trace(o);
     if (false)
     untyped {
       trace(neko.Boot.__classes);
@@ -103,7 +118,8 @@ class HelloPascal {
 	    TForm = neko.Boot.__classes.TForm;
 	    Test2.__super__ = TObject;
 	    untyped __dollar__objsetproto(Test2.prototype, TObject.prototype);
-    }    
+    }
+    trace(TObj1);    
   }
 	static function main() {
 		trace('calling hello() in .dll written in pascal');
@@ -134,9 +150,17 @@ class HelloPascal {
 		trace(test(new XForm(null)));
 		trace(XForm);
 		trace(TForm);
+		
+    var ob2: TObject = new TObject();
+    trace('Halle');
+    trace(MyLib.showMe(ob2));
+    //trace(ob2.ClassName());
+		
+		
 		//trace(test(Test2));
 		var ob1: TObj1 = new TObj1(123);
-		trace(123);
+		//trace(123);
+		//trace(ob1);
 		trace(ob1.Data);
 		ob1.Data += 127;
 		trace(ob1.Data);
