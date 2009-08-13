@@ -230,7 +230,7 @@ begin
     a:= val_field(cl, val_id(PChar(Super)));
     if val_is_object(a) then begin
       alloc_field(Result, id__super__, a);
-      vobject(proto).proto:= vobject(val_field(a, id_prototype)); //.proto;
+      SetProto(proto, val_field(a, id_prototype)); //.proto;
       //Result:= val_field(a, id__super__);
     end;
   end;
@@ -249,7 +249,7 @@ begin
   if val_is_object(cl) then begin
     //Result:= alloc_object(cl);
     Result:= alloc_object(nil);
-    vobject(Result).proto:= vobject(cl);
+    SetProto(Result , cl);
     AInstance:= Result;
   end;
 end;

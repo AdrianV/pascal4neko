@@ -105,9 +105,14 @@ uses
 {$ALIGN 2} //????
 {$ENDIF}
 
+{$define xNEKO_DEBUG}
 const
 {$IFDEF MSWINDOWS}
+{$ifdef NEKO_DEBUG}
+  neko_library = 'neko-debug.dll'; {Setup as you need}
+{$else}
   neko_library = 'neko.dll'; {Setup as you need}
+{$ENDIF}
 {$ENDIF}
 {$IFDEF LINUX}
   neko_library = 'libneko.so'; {Setup as you need}
@@ -135,25 +140,35 @@ type
   Tint_val = Integer; // !! not 64 bit compatible
   Pint_val = ^Tint_val;
   Tval_type =  Longint;
+  Tfield = longint;
   Tvalue = record
     t : Tval_type;
   end;
+  value = ^Tvalue;
+  Pvalue = ^value;
+
+  Tobjcell = record
+    id: Tfield;
+    v: value;
+  end;
+  Pobjcell = ^Tobjcell;
+  Tobjcells = array[0..1000] of Pobjcell;
+  Pobjcells = ^Tobjcells;
 
   Tobjtable = record
+    count: Longint;
+    cells: Pobjcells;
   end;
 
   Tbuffer = record
   end;
 
-  Tfield = longint;
 
   Tvkind = record
     __zero : longint;
   end;
   vkind = ^Tvkind;
 
-  value = ^Tvalue;
-  Pvalue = ^value;
   val_array = array [0..MaxInt div (sizeof(value)+1)] of value;
   Pval_array = ^val_array;
   TArrayInfo = record
@@ -192,11 +207,17 @@ type
 {$ENDIF}
 
 type
-  vobject = ^Tvobject;
-  Tvobject = record
+  vobject181 = ^Tvobject181;
+  Tvobject181 = record
+    t : Tval_type;
+    table : Tobjtable;
+    proto : vobject181;
+  end;
+  vobject180 = ^Tvobject180;
+  Tvobject180 = record
     t : Tval_type;
     table : Pobjtable;
-    proto : vobject;
+    proto : vobject180;
   end;
   Tneko_vm = record
     sp: Pint_val;
@@ -447,9 +468,11 @@ var
 
   __kind_k_interface: Tvkind;
   k_interface: vkind = @ __kind_k_interface;
+  object_is_181: Boolean;
 
 
 procedure add_function(c: value; const Name: string; code: Pointer; Args: Integer);
+function GetProto(v: value): value;
 function IInterface_(v: value): IInterface;
 procedure IInterface_free(v: value); cdecl;
 function IInterface_GC(I: IInterface): value;
@@ -460,6 +483,7 @@ procedure UnloadNeko;
 function LoadModule(const AFile: string): value;
 procedure ExecuteModuleMain(AModule: value);
 function ReportException(vm: Pneko_vm; exc: value; isExc: BOOL ): string;
+procedure SetProto(var v: value; proto: value);
 procedure TPointer_free(v: value); cdecl;
 procedure TObject_free(v: value); cdecl;
 function TObject_NekoLink(this: value; Self: TObject): value;
@@ -531,6 +555,33 @@ begin
   EmbeddedNeko:= neko_vm_alloc(nil);
   neko_vm_select(EmbeddedNeko);
   neko_vm_jit(EmbeddedNeko, 1);
+end;
+function GetProto(v: value): value;
+begin
+  if val_is_object(v) then begin
+    if object_is_181 then
+      Result:= value(vobject181(v).proto)
+    else
+      Result:= value(vobject180(v).proto)
+  end else
+    Result:= nil;
+end;
+procedure SetProto(var v: value; proto: value);
+begin
+  val_check_object(v);
+  val_check_object(proto);
+  if object_is_181 then
+    vobject181(v).proto:= vobject181(proto)
+  else
+    vobject180(v).proto:= vobject180(proto);
+end;
+
+procedure TestObjTable;
+var
+  v: value;
+begin
+  v:= alloc_object(nil);
+  object_is_181:= (vobject181(v).table.count = 0) and (vobject181(v).table.cells = nil);
 end;
 
 procedure LoadNeko;
@@ -645,7 +696,7 @@ begin
     id__class__:= val_id('__class__');
     id_cache:= val_id('cache');
     id_constructor:= val_id('constructor');
-    
+    TestObjTable;
   except
     UnloadNeko;
   end;
