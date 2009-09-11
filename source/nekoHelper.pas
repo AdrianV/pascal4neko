@@ -56,6 +56,7 @@ type
 
 procedure AddExportTable(const ATable: array of TExportInfo; const LibName: string = '');
 function AddToNekoTable(old: value; const data: array of value): value;
+function AddValueArrays(const first, second: array of value): TNekoArray;
 procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
 function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
 function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0): value;
@@ -114,6 +115,18 @@ begin
     val_array_ptr(a)[i] := data[i];
   val_array_ptr(a)[l] := old;
   Result:= a;
+end;
+
+function AddValueArrays(const first, second: array of value): TNekoArray;
+var
+  i, l1: Integer;
+begin
+  l1:= Length(first);
+  SetLength(Result, l1 + Length(second));
+  for i := 0 to l1 - 1 do
+    Result[i]:= first[i];
+  for i := 0 to High(second) do
+    Result[l1 + i]:= second[i];
 end;
 
 procedure AddExportTable(const ATable: array of TExportInfo; const LibName: string);
