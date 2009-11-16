@@ -45,7 +45,7 @@ uses
 {$ENDIF}
   Classes,
   SyncObjs,
-  neko;
+  neko, p4nHelper;
 
 type
   TExportInfo = record
@@ -53,16 +53,24 @@ type
     Func: Pointer;
     Args: Integer;
   end;
+  TCustomConvert = function(const s: string): value;
+  TArrayOfConst = array of TVarRec;
 
 procedure AddExportTable(const ATable: array of TExportInfo; const LibName: string = '');
 function AddToNekoTable(old: value; const data: array of value): value;
 function AddValueArrays(const first, second: array of value): TNekoArray;
+function ArrayToArrayOfConst(v: value): TArrayOfConst;
 procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
 function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
 function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0): value;
 function NewNekoInstance(out AInstance:Value): Value;
-function SplitString(var S: string; const limit: string):string;
 function ValueToVariant(v: value): Variant;
+function VariantToValue(v: Variant): value;
+
+var
+  custom_convert1: TCustomConvert = nil;
+  custom_convert2: TCustomConvert = nil;
+  custom_convert3: TCustomConvert = nil;
 
 implementation
 
@@ -76,20 +84,6 @@ type
 var
   ExportFunc: TStringList;
   ExportProtect: TCriticalSection;
-
-function SplitString(var S: string; const limit: string):string;
-var
-	i: integer;
-begin
-  i:= Pos(limit, s);
-  if i > 0 then begin
-    Result:= copy(S, 1, i -1);
-    s:= copy(S, i + Length(limit), MaxInt);
-	end else begin
-		result:= S;
-		S:= '';
-	end;
-end;
 
 procedure CleanExport;
 var
@@ -200,7 +194,7 @@ begin
     end;
     loader:= val_field(this, val_id('_loader'));
     Result:= val_ocall(loader, val_id('loadprim'), [prim, nargs], @exc);
-  end;
+  end else Result:= val_null;
 end;
 
 function myLoadModule(mname, vthis: value): value; cdecl;
@@ -267,6 +261,105 @@ begin
   end;
 end;
 
+procedure AssignConst(var res: TVarRec; v: value);
+var
+  t: value;
+begin
+  res.VType:= vtAnsiString;
+  res.VAnsiString:= nil;
+  if not val_is_null(v) then begin
+    if val_is_int(v) then begin
+      res.VType:= vtInteger;
+      res.VInteger:= val_int(v);
+    end else begin
+      case v^.t and 7 of
+        cVAL_NULL: begin
+
+        end;
+        cVAL_FLOAT: begin
+          res.VType:= vtExtended;
+          New(res.VExtended);
+          res.VExtended^:= val_float(v);
+        end;
+        cVAL_BOOL: begin
+          res.VType:= vtBoolean;
+          res.VBoolean:= v = val_true;
+        end;
+        cVAL_STRING: begin
+          //res.VType:= vtAnsiString;
+          //res.VAnsiString:= nil;
+          AnsiString(res.VAnsiString):= val_string(v);
+        end;
+        cVAL_OBJECT: begin
+          t:= val_field(v, id_string);
+          if val_is_string(t) then begin
+            AnsiString(res.VAnsiString):= val_string(t);
+          end else begin
+            AnsiString(res.VAnsiString):= ValueToString(v);
+          end;
+        end;
+        cVAL_ARRAY: ;
+        cVAL_FUNCTION: ;
+        cVAL_ABSTRACT: ;
+      end;
+    end;
+  end;
+end;
+
+function ArrayToArrayOfConst(v: value): TArrayOfConst;
+
+  procedure BuildArray(a: value);
+  var
+    ai: TArrayInfo;
+    i: Integer;
+  begin
+    ai.FromValue(a);
+    SetLength(Result, ai.l);
+    for i:= 0 to ai.l - 1 do
+      AssignConst(Result[i], ai.Get(i, val_null))
+  end;
+
+  procedure FromValue(const val: array of const);
+  begin
+    SetLength(Result, 1);
+    Result[0]:= val[0];
+  end;
+
+var
+  t: value;
+begin
+  Result:= nil;
+  if not val_is_null(v) then begin
+    if val_is_int(v) then begin
+      FromValue([val_int(v)]);
+    end else begin
+      case v^.t and 7 of
+        cVAL_NULL: begin
+
+        end;
+        cVAL_FLOAT: FromValue([val_float(v)]);
+        cVAL_BOOL: FromValue([v = val_true]);
+        cVAL_STRING: FromValue([val_string(v)]);
+        cVAL_OBJECT: begin
+          t:= val_field(v, id_string);
+          if val_is_string(t) then
+            FromValue([val_string(t)])
+          else begin
+            t:= val_field(v, id_array);
+            if val_is_array(t) then
+              BuildArray(t)
+            else
+              FromValue([ValueToString(v)]);
+          end;
+        end;
+        cVAL_ARRAY: BuildArray(v);
+        cVAL_FUNCTION: ;
+        cVAL_ABSTRACT: ;
+      end;
+    end;
+  end;
+end;
+
 function ValueToVariant(v: value): Variant;
 
   function ArrayToVariant(a: value): Variant;
@@ -314,6 +407,42 @@ begin
     end;
   end;
 end;
+
+function VariantToValue(v: Variant): value;
+var
+  pVar: PVarData;
+begin
+  pVar:= FindVarData(v);
+  case pVar^.VType of
+    varNull, varUnknown: Result:= val_null;
+    varSmallint, varInteger, varShortInt, varWord:
+        Result:= alloc_int(v);
+    varSingle, varDouble, varCurrency, varDate:
+        Result:= alloc_float(v);
+    varBoolean: Result:= alloc_bool(v);
+    varString: begin
+      if (pVar^.VString = nil) then begin
+        Result:= alloc_string('');
+      end else begin
+        case String(pVar^.VString)[1] of
+          #1: if @custom_convert1 <> nil then
+                Result:= custom_convert1(String(pVar^.VString))
+              else Result:= alloc_string(String(pVar^.VString));
+          #2: if @custom_convert2 <> nil then
+                Result:= custom_convert2(String(pVar^.VString))
+              else Result:= alloc_string(String(pVar^.VString));
+          #3: if @custom_convert3 <> nil then
+                Result:= custom_convert3(String(pVar^.VString))
+              else Result:= alloc_string(String(pVar^.VString));
+          else Result:= alloc_string(String(pVar^.VString));
+        end;
+      end;
+    end;
+    else
+      Result:= alloc_string(v);
+  end;
+end;
+
 
 initialization
   ExportProtect:= TCriticalSection.Create;

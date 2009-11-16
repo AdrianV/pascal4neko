@@ -328,7 +328,8 @@ function val_is_bool(v : value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$END
 function val_is_number(v : value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_float(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_string(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function val_is_function(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_is_function(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF} overload;
+function val_is_function(v: value; n: Integer): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF} overload;
 function val_is_object(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_array(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_abstract(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -777,6 +778,11 @@ end;
 function val_is_function(v: value): Boolean;
 begin
   Result:= not val_is_int(v) and (v.t and 7 = cVAL_FUNCTION);
+end;
+
+function val_is_function(v: value; n: Integer): Boolean;
+begin
+  Result:= val_is_function(v) and ((val_fun_nargs(v) = n) or (val_fun_nargs(v) = VAR_ARGS));
 end;
 
 function val_is_object(v: value): Boolean;

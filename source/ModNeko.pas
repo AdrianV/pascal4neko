@@ -34,7 +34,7 @@ uses Classes, SysUtils, typinfo,
   {$IFNDEF FPC}{$IFNDEF LINUX}filectrl, {$ENDIF}{$ENDIF}
   blcksock, visualserverbase, inifiles, vstypedef, ExecCGI,
   synacode, synautil, mimemess, authentication, httpServer,
-  neko, nekoHelper, SyncObjs;
+  neko, nekoHelper, p4nHelper, SyncObjs;
 
 type
   PIPInfo = ^TIPInfo;
