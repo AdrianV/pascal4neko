@@ -60,6 +60,7 @@ procedure AddExportTable(const ATable: array of TExportInfo; const LibName: stri
 function AddToNekoTable(old: value; const data: array of value): value;
 function AddValueArrays(const first, second: array of value): TNekoArray;
 function ArrayToArrayOfConst(v: value): TArrayOfConst;
+function ArrayToArrayOfString(v: value): TDynamicStringArray;
 procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
 function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
 function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0): value;
@@ -357,6 +358,20 @@ begin
         cVAL_ABSTRACT: ;
       end;
     end;
+  end;
+end;
+
+function ArrayToArrayOfString(v: value): TDynamicStringArray;
+var
+  arr: TArrayInfo;
+  i: Integer;
+begin
+  Result:= nil;
+  arr.FromValue(v);
+  if arr.l > 0 then begin
+    SetLength(Result, arr.l);
+    for i := 0 to arr.l - 1 do
+      Result[i]:= val_HaxeString(arr.Get(i, val_null));
   end;
 end;
 

@@ -711,7 +711,8 @@ end;
 
 function alloc_int(v : longint) : value;
 begin
-   Result:=value(Tint_val(((longint(v)) shl 1) or 1));
+//   Result:=value(Tint_val(((longint(v)) shl 1) or 1));
+  Result:= value((v * 2) or 1);
 end;
 
 function alloc_int32(v : longint) : value;
@@ -849,8 +850,7 @@ end;
 
 function val_int(v: value): Integer;
 begin
-  //Result:= Integer(Tint_val(v)) shr 1;
-  Result:= (Tint_val(v) shr 1) OR (Tint_val(v) and $80000000);
+  Result:= (Cardinal(v) shr 1) OR (Cardinal(v) and $80000000);
 end;
 
 function val_float(v: value): Double;
@@ -1178,6 +1178,7 @@ end;
 
 function TArrayInfo.SetVal(Index: Integer; val: value): value;
 begin
+  Result:= val;
   if (Index >= 0) and (Index < l) then
     a^[Index]:= val;
 end;
@@ -1191,6 +1192,8 @@ end;
 
 initialization
   LoadNeko;
+  //assert(val_int(alloc_int(-1)) = -1);
+  //assert(val_int(alloc_int(-MaxInt div 2)) = -MaxInt div 2);
 
 finalization
   UnloadNeko;

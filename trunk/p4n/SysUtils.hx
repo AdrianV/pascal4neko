@@ -1,10 +1,13 @@
-﻿/**
+/**
  * ...
  * @author Adrian Veith
  */
 
 package p4n;
 import neko.NativeString;
+import neko.io.Path;
+import neko.io.File;
+import neko.FileSystem;
 
 typedef FormatSettings = {
 	var ThousandSeparator: String;
@@ -51,6 +54,24 @@ class SysUtils {
 	public inline static function formatDateTime(f: String, x: Float): String { return NativeString.toString(I.formatDateTime(f, x)); }
 	public inline static function formatTDateTime(f: String, x: TDateTime): String { return NativeString.toString(I.formatDateTime(f, x.toFloat)); }
 	public inline static function setFormat(format: Dynamic): Void { I.setFormat(format); }
+
+  public static function forceDir(APath: String): Bool {
+		//trace(APath);
+		try {
+			var path = new Path(APath);
+			if (! FileSystem.exists(path.dir)) {
+				//trace('check: ' + path.dir);
+				if (forceDir(path.dir)) {
+					//trace('create: ' + path.dir);
+					FileSystem.createDirectory(path.dir);
+				} else return false;
+			}
+			return true;
+		} catch (e: Dynamic) {
+			trace(e);
+			return false;
+		}
+	}
 
 	static public function __init__() {
 		neko.Lib.load('p4n_std.dll', '_init_std', 1) ('p4n_std') (I);
