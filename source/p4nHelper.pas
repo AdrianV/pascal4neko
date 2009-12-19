@@ -34,6 +34,7 @@ uses Sysutils, Forms
 
 type
   TDynamicByteArray = array of byte;
+	TDynamicStringArray = array of string;
 
 function _Is_(AObject: TObject; AClass: TClass): Boolean;
 function AddPath(const P1, P2: string): string;
