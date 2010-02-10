@@ -2,5 +2,5 @@
     <user name="VAdrian"/>
     <user name="AdrianV"/>
     <description>with pascal4neko you can write neko .ndlls in object pascal (freepascal or delphi), or to embedd neko modules in pascal.</description>
-    <version name="1.2">Changed License to MPL. Cleaned the code. Now it includes a sample Aplication Server, which uses a modified visualsynapse HTTP Server.</version>
+    <version name="1.2"></version>
 </project>

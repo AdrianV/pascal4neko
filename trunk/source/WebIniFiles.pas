@@ -304,6 +304,7 @@ begin
     if stream.Stream <> nil then begin
       stream.Stream.Position:= 0;
       List:= TStringList.Create;
+      //List.LineBreak:= #$a;
       List.LoadFromStream(stream.Stream);
       SetStrings(List);
     end else
