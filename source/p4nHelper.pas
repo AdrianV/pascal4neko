@@ -25,7 +25,10 @@
 unit p4nHelper;
 
 interface
-uses Sysutils, Forms
+uses Sysutils
+{$IFNDEF FPC}
+  ,Forms
+{$ENDIF}
 {$IFDEF MSWINDOWS}
 	,Windows, ShellApi
 {$ENDIF}
@@ -350,9 +353,9 @@ end;
 
 function ProgramData: string;
 begin
-  Result:= GetEnvironmentVariable('ProgramData');
+  Result:= Sysutils.GetEnvironmentVariable('ProgramData');
   if Result = '' then begin
-    Result:= IncludeTrailingPathDelimiter(GetEnvironmentVariable('ALLUSERSPROFILE')) + ExtractFileName(GetEnvironmentVariable('APPDATA'));
+    Result:= IncludeTrailingPathDelimiter(Sysutils.GetEnvironmentVariable('ALLUSERSPROFILE')) + ExtractFileName(Sysutils.GetEnvironmentVariable('APPDATA'));
   end;
 end;
 

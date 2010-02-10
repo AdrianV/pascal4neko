@@ -201,8 +201,9 @@ var
 
 begin
   c:= CONTEXT();
-  s:= c.r.H.FRequest.Header.Values['Cookie'];
   Result:= val_null;
+  if c = nil then exit;
+  s:= c.r.H.FRequest.Header.Values['Cookie'];
   x:= 0;
   start:= 1;
   lens:= Length(s);
@@ -234,9 +235,12 @@ var
   c: PContext;
 begin
   c:= CONTEXT();
-  s:= ValueToString(name) + '=' + ValueToString(v) + ';';
-  c.r.H.FResponse.Header.Values['Set-Cookie']:= s;
-  Result:= val_true;
+  if c <> nil then begin
+    s:= ValueToString(name) + '=' + ValueToString(v) + ';';
+    c.r.H.FResponse.Header.Values['Set-Cookie']:= s;
+    Result:= val_true;
+  end else
+    Result:= val_false;
 end;
 
 function get_host_name(): value; cdecl;
