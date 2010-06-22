@@ -174,7 +174,7 @@ type
   TArrayInfo = record
     a: Pval_array;
     l: Integer;
-    procedure FromValue(v: value);
+    function FromValue(v: value): Boolean;
     function Get(Index: Integer; Def: value): value; inline;
     function SetVal(Index: Integer; val: value): value; inline;
   end;
@@ -955,14 +955,17 @@ procedure TObject_free(v: value); cdecl;
 var
   o: TObject;
 begin
-  //if val_is_abstract(v) and val_is_kind(v, k_object) then
-  o:= TObject(vabstract(v).data);
-  vabstract(v).data:= nil;
-  if o is TInterfacedObject then begin
-    if TInterfacedObject(o).RefCount = 0 then
+  try
+    //if val_is_abstract(v) and val_is_kind(v, k_object) then
+    o:= TObject(vabstract(v).data);
+    vabstract(v).data:= nil;
+    if o is TInterfacedObject then begin
+      if TInterfacedObject(o).RefCount = 0 then
+        o.Free;
+    end else
       o.Free;
-  end else
-    o.Free;
+  except
+  end;
 end;
 
 procedure IInterface_free(v: value); cdecl;
@@ -1150,7 +1153,7 @@ end;
 
 { TArrayInfo }
 
-procedure TArrayInfo.FromValue(v: value);
+function TArrayInfo.FromValue(v: value): Boolean;
 var
   vl: value;
 begin
@@ -1165,7 +1168,9 @@ begin
     a:= val_array_ptr(v);
     if l = -1 then
       l:= val_array_size(v);
-  end;
+    Result:= True
+  end else
+    Result:= False;
 end;
 
 function TArrayInfo.Get(Index: Integer; Def: value): value;

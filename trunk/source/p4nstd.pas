@@ -12,6 +12,7 @@ uses
   p4nInifiles;
 
   function _init_std__1: pointer; cdecl;
+  function init_std(I: value): value; cdecl;
 
 implementation
 

@@ -187,7 +187,10 @@ begin
       if Assigned(ExportFunc) and ExportFunc.Find(s, i) then begin
         SplitString(s, '@');
         p:= PExportInfo(ExportFunc.Objects[i]);
-        Result:= alloc_function(p.CFunc, p.NArgs, PChar(s));
+        if p.CFunc <> nil then 
+          Result:= alloc_function(p.CFunc, p.NArgs, PChar(s))
+        else
+          Result:= val_null;
         exit;
       end;
     finally

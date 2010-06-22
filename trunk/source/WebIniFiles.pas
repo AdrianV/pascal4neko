@@ -67,6 +67,7 @@ type
     destructor Destroy; override;
     function Expand(const s: string): string;
     function ReadString(const Section, Ident, Default: string): string; override;
+    procedure ReadExpandedSectionValues(const Section: string; Strings: TStrings); 
   end;
   TIniStack = record
     name: string;
@@ -158,7 +159,20 @@ var
         if p1 <> '' then
           ini:= GetIni(p1)
         else ini:= Self;
-        Result:= ini.ReadString(p2, p3, s);
+        if (p2 = '') and (s = '') then begin
+          s:= FileName;
+          if SameText(p3, 'Name') then
+            s:= ExtractFileName(s)
+          else if SameText(p3, 'Path') then
+            s:= ExtractFilePathWeb(s)
+          else if SameText(p3, 'Drive') then
+            s:= ExtractFileDrive(s)
+          else if SameText(p3, 'Extension') then
+            s:= ExtractFileExt(s)
+          else if SameText(p3, 'Dir') then
+            s:= ExtractFileDir(s)
+        end;
+        Result:= ini.ReadString(p2, p3, s)
       end else
         Result:= '';
     finally
@@ -311,6 +325,21 @@ begin
       Clear;
   finally
     List.Free;
+  end;
+end;
+
+procedure TWebIniFile.ReadExpandedSectionValues(const Section: string;
+  Strings: TStrings);
+var
+  i: Integer;
+begin
+  Strings.BeginUpdate;
+  try
+    ReadSectionValues(Section, Strings);
+    for i := 0 to Strings.Count - 1 do
+      Strings.Strings[i]:= Expand(Strings.Strings[i]);
+  finally
+    Strings.EndUpdate;
   end;
 end;
 
