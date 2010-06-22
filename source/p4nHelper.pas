@@ -352,10 +352,19 @@ begin
 end;
 
 function ProgramData: string;
+var
+  s: string;
 begin
   Result:= Sysutils.GetEnvironmentVariable('ProgramData');
   if Result = '' then begin
-    Result:= IncludeTrailingPathDelimiter(Sysutils.GetEnvironmentVariable('ALLUSERSPROFILE')) + ExtractFileName(Sysutils.GetEnvironmentVariable('APPDATA'));
+    Result:= IncludeTrailingPathDelimiter(Sysutils.GetEnvironmentVariable('ALLUSERSPROFILE'));
+    s:= ExtractFileName(ExcludeTrailingBackslash(Sysutils.GetEnvironmentVariable('APPDATA')));
+    if s = '' then begin
+      s:= 'Anwendungsdaten';
+      if not DirectoryExists(Result + s) then
+        s:= 'Application Data';
+    end;
+    Result:= Result + s;
   end;
 end;
 

@@ -427,7 +427,7 @@ end;
 procedure InitModNeko;
 const
   InitDone: Boolean = False;
-  CExport: array [0..20] of TExportInfo = (
+  CExport: array [0..21] of TExportInfo = (
     (Name: 'cgi_get_cwd'; Func: @cgi_get_cwd; Args: 0),
     (Name: 'cgi_set_main'; Func: @cgi_set_main; Args: 1),
     (Name: 'get_cookies'; Func: @get_cookies; Args: 0),
@@ -448,7 +448,8 @@ const
     (Name: 'cgi_get_config'; Func: @cgi_get_config; Args: 0),
     (Name: 'cgi_command'; Func: @cgi_command; Args: 1),
     (Name: 'get_http_method'; Func: @get_http_method; Args: 0),
-    (Name: 'log_message'; Func: @log_message; Args: 1)
+    (Name: 'log_message'; Func: @log_message; Args: 1),
+    (Name: 'tora_infos'; Func: nil; Args: 0)
   );
 
 var

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ...
  * @author ...
  */
@@ -108,7 +108,7 @@ class TDateTime
 	}
 	
 	public static function Decode(dt: Float): DateRec {
-		return TDateTime.fromFloat(dt).decode();
+		return if (dt != null) TDateTime.fromFloat(dt).decode() else null;
 	}
 	
 	public inline function Year(): Int {
@@ -121,6 +121,10 @@ class TDateTime
 		return decode().day;
 	}
 	
+	public static function LastDayOf(Month: Int, Year: Int): Int {
+		return if (IsLeapYear(Year)) MD1[Month] else MD0[Month];
+	}
+
 	public function LastDayOfMonth(): Int {
 		var dt: DateRec = decode();
 		return if (IsLeapYear(dt.year)) MD1[dt.month] else MD0[dt.month];
@@ -157,13 +161,19 @@ class TDateTime
 		t = (t - m) * 60;
 		return {year: dt.year, month: dt.month, day: dt.day, hour: h, minute: m, sec: Tools.round(t, 3) };
 	}
-	public static function DecodeDateTime(dt: Float): DateTimeRec { return TDateTime.fromFloat(dt).decodeDateTime(); }
+	public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
 	public inline function toInt(): Int { return Math.floor(toFloat); }
 	public inline function TimeValue(): Float { return toFloat - Math.floor(toFloat); }
 	public inline function toDate(): Date { 
 		var dt: DateTimeRec = decodeDateTime();
 		return new Date(dt.year, dt.month -1, dt.day, dt.hour, dt.minute, Math.floor(dt.sec));
 	}
+  public static function FloatToDate(dt: Float): Date {
+    if (dt != null) {
+      return fromFloat(dt).toDate();
+    } else
+      return null;
+  }
 	public static function EasterSunday(year: Int): TDateTime {
 		var a :Int = year % 19;
 		var b : Int = (204-11*a) % 30;
@@ -180,11 +190,10 @@ class TDateTime
 	}
 	
 	public static function fromDate(d: Date): TDateTime {
-		var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);
-		//res.Encode(1970, 1, 1);
-		//res.EncodeTime(1, 0, 0);
-		res.toFloat += d.getTime() / (1000 * 60 * 60 * 24); 
-		return res;
+		//var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);
+		//res.toFloat += d.getTime() / (1000 * 60 * 60 * 24); 
+		return TDateTime.EncodeDateTime(d.getFullYear(), d.getMonth() +1, d.getDate(), 
+      d.getHours(), d.getMinutes(), d.getSeconds());
 	}
 	public static inline function fromFloat(f: Float): TDateTime {
 		return new TDateTime(f);
