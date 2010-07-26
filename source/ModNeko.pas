@@ -129,26 +129,27 @@ var
   c: PContext;
   i: Integer;
 begin
-  Result:= nil;
-	val_check_string(v);
-  s:= val_string(v);
-	if s = 'stats' then begin
-    result:= val_null; //return neko_stats_build(neko_vm_current());
-    exit;
-  end;
-	if s = 'cache' then begin
-    c:= CONTEXT();
-    Result:= val_null;
-    with c.r.ModNeko.FCache.LockList do try
-      for i := 0 to Count - 1 do
-        with TCacheMod(Items[i]) do
-          Result:= AddToNekoTable(Result, [alloc_string(FileName), main^,  alloc_int(Hits)]);
-    finally
-      c.r.ModNeko.FCache.UnlockList;
+	try
+    Result:= nil;
+    val_check_string(v);
+    s:= val_string(v);
+    if s = 'stats' then begin
+      result:= val_null; //return neko_stats_build(neko_vm_current());
+      exit;
     end;
-		exit;
-	end;
-	//neko_error();
+    if s = 'cache' then begin
+      c:= CONTEXT();
+      Result:= val_null;
+      with c.r.ModNeko.FCache.LockList do try
+        for i := 0 to Count - 1 do
+          with TCacheMod(Items[i]) do
+            Result:= AddToNekoTable(Result, [alloc_string(FileName), main^,  alloc_int(Hits)]);
+      finally
+        c.r.ModNeko.FCache.UnlockList;
+      end;
+      exit;
+    end;
+  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
 end;
 
 
@@ -164,10 +165,12 @@ procedure request_print(const data: PChar; size: Integer; param: Pointer); cdecl
 var
   c: THTTPRequest;
 begin
-	c := THTTPRequest(param);
-	if c = nil then c := CONTEXT().r;
-	if (size = -1) then size := strlen(data);
-  c.H.SendData(data, size);
+	try
+    c := THTTPRequest(param);
+    if c = nil then c := CONTEXT().r;
+    if (size = -1) then size := strlen(data);
+    c.H.SendData(data, size);
+  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
 end;
 
 procedure null_print(const data: PChar; size: Integer; param: Pointer); cdecl;
@@ -200,33 +203,35 @@ var
   end;
 
 begin
-  c:= CONTEXT();
-  Result:= val_null;
-  if c = nil then exit;
-  s:= c.r.H.FRequest.Header.Values['Cookie'];
-  x:= 0;
-  start:= 1;
-  lens:= Length(s);
-  while true do begin
-    for i := start to lens do begin
-      if s[i] = '=' then begin
-        x:= i;
-        break;
-      end;
-    end;
-    if x <= start then exit;
-    for i:= x+1 to lens do begin
-      case s[i] of
-        #10, #13, ';': begin
+	try
+    c:= CONTEXT();
+    Result:= val_null;
+    if c = nil then exit;
+    s:= c.r.H.FRequest.Header.Values['Cookie'];
+    x:= 0;
+    start:= 1;
+    lens:= Length(s);
+    while true do begin
+      for i := start to lens do begin
+        if s[i] = '=' then begin
+          x:= i;
           break;
         end;
       end;
+      if x <= start then exit;
+      for i:= x+1 to lens do begin
+        case s[i] of
+          #10, #13, ';': begin
+            break;
+          end;
+        end;
+      end;
+      ende:= i;
+      AddCookie;
+      if (s[ende] <> ';') or (s[ende+1] <> ' ') then break;
+      start:= ende + 2;
     end;
-    ende:= i;
-    AddCookie;
-    if (s[ende] <> ';') or (s[ende+1] <> ' ') then break;
-    start:= ende + 2;
-  end;
+  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
 end;
 
 function set_cookie(name, v: value): value; cdecl;
@@ -346,7 +351,7 @@ var
   s, s1, n: string;
 begin
   c:= CONTEXT();
-  Result:= val_null; //not implemented
+  Result:= val_null;
   s:= RequestParams;
   //SplitStringAt(s, '?');
   while s <> '' do begin
