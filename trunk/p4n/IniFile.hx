@@ -37,10 +37,15 @@ private class I {
 
 }
 
-class CustomIniFile 
+class CustomIniFile extends TObject 
 {
 	var _i: Void;
 	public var FileName: String;
+	
+	public override function release () {
+		TObject.Release(_i);
+	}
+	
 	public function new(i: Void, AFileName: String) {
 		_i = i;
 		FileName = AFileName;

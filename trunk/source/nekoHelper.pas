@@ -85,6 +85,8 @@ type
 var
   ExportFunc: TStringList;
   ExportProtect: TCriticalSection;
+	id__loader: Tfield;
+	id_loadprim: Tfield;
 
 procedure CleanExport;
 var
@@ -196,8 +198,8 @@ begin
     finally
       ExportProtect.Release;
     end;
-    loader:= val_field(this, val_id('_loader'));
-    Result:= val_ocall(loader, val_id('loadprim'), [prim, nargs], @exc);
+    loader:= val_field(this, id__loader);
+    Result:= val_ocall(loader, id_loadprim, [prim, nargs], @exc);
   end else Result:= val_null;
 end;
 
@@ -461,10 +463,21 @@ begin
   end;
 end;
 
+procedure InitModule;
+const
+  CExport: array[0..0] of TExportInfo = (
+    (Name: 'nekoHelper@release'; Func: @TObject_release; Args: 1)
+  );
+begin
+  ExportProtect:= TCriticalSection.Create;
+	id__loader:= val_id('_loader');
+	id_loadprim:= val_id('loadprim');
+  AddExportTable(CExport);
+end;
 
 initialization
-  ExportProtect:= TCriticalSection.Create;
-
+	InitModule;
+  
 finalization
   CleanExport;
   FreeAndNil(ExportFunc);

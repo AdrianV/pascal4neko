@@ -466,6 +466,8 @@ var
 
   __kind_k_object: Tvkind;
   k_object: vkind = @ __kind_k_object;
+  __kind_k_objectgc: Tvkind;
+  k_objectgc: vkind = @ __kind_k_objectgc;
 
   __kind_k_interface: Tvkind;
   k_interface: vkind = @ __kind_k_interface;
@@ -492,9 +494,12 @@ function TObject_wrapper(Self: TObject): value; {$IFDEF COMPILER_INLINE} inline;
 function TObject_GC(Self: TObject): value;
 function TObject_(v: value): TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function TObject_Of(v: value): TObject;
+function TObject_Release(v: value): value; cdecl;
 function TObject_Self: TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure StreamReader(p: readp; buf: Pointer; size: Integer); cdecl;
 function ValueToString(v: value): string;
+function NekoSaveException(e: Exception): value;
+procedure NekoThrowException(v: value);
 
 var
   EmbeddedNeko: Pneko_vm;
@@ -949,6 +954,7 @@ procedure TPointer_free(v: value); cdecl;
 begin
   //if val_is_abstract(v) and val_is_kind(v, k_object) then
   Dispose(vabstract(v).data);
+  vabstract(v).data:= nil;
 end;
 
 procedure TObject_free(v: value); cdecl;
@@ -978,9 +984,30 @@ begin
   Result:= alloc_abstract(k_object, Self);
 end;
 
+function TObject_Release(v: value): value; cdecl;
+var
+  o: TObject;
+begin
+	Result:= val_false;
+  try
+    if val_is_abstract(v) and val_is_kind(v, k_objectgc) then begin
+      o:= TObject(vabstract(v).data);
+      if o = nil then exit;
+      vabstract(v).data:= nil;
+      if o is TInterfacedObject then begin
+        if TInterfacedObject(o).RefCount = 0 then
+          o.Free;
+      end else
+        o.Free;
+      Result:= val_true;
+    end;
+  except
+  end;
+end;
+
 function TObject_(v: value): TObject;
 begin
-  if val_is_kind(v, k_object) then
+  if val_is_kind(v, k_object) or val_is_kind(v, k_objectgc) then
     Result:= TObject(val_data(v))
   else Result:= TObject(v);
 end;
@@ -990,7 +1017,7 @@ begin
   Result:= nil;
   if val_is_object(v) then
     v:= val_field(v, id_Self);
-  if val_is_kind(v, k_object) then
+  if val_is_kind(v, k_object) or val_is_kind(v, k_objectgc) then
     Result:= TObject(val_data(v));
 end;
 
@@ -1017,7 +1044,7 @@ end;
 
 function TObject_GC(Self: TObject): value;
 begin
-  Result:= alloc_abstract(k_object, Self);
+  Result:= alloc_abstract(k_objectgc, Self);
   val_gc(Result, TObject_free);
 end;
 
@@ -1149,6 +1176,18 @@ var
 begin
   lStream:= p;
   lStream.ReadBuffer(buf^, size);
+end;
+
+function NekoSaveException(e: Exception): value;
+begin
+	Result:= alloc_object(nil);
+  alloc_field(Result, val_id('message'), alloc_string(e.Message));
+  alloc_field(Result, val_id('exception'), alloc_string(e.ClassName));
+end;
+
+procedure NekoThrowException(v: value);
+begin
+	if v <> nil then val_throw(v);
 end;
 
 { TArrayInfo }
