@@ -10,12 +10,12 @@ import neko.NativeString;
 
 private class I {
 	public static function getState(_p: Void): Int { return null; }
-	public static function setHandler(_p: Void, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void;
-	public static function startProcess(_p: Void, cmd: String, ?args: Array<String>): Void;
-	public static function terminate(_p: Void): Void;
-	public static function write(_p: Void, s: String): Void;
-	public static function writeln(_p: Void, s: String): Void;
-	public static function createProcess(): Void;
+	public static function setHandler(_p: Void, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
+	public static function startProcess(_p: Void, cmd: String, ?args: Array<String>): Void {}
+	public static function terminate(_p: Void): Void {}
+	public static function write(_p: Void, s: String): Void {}
+	public static function writeln(_p: Void, s: String): Void {}
+	public static function createProcess(): Void {}
 }
 
 class Process {

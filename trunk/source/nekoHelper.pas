@@ -372,7 +372,7 @@ var
   i: Integer;
 begin
   Result:= nil;
-  arr.FromValue(v);
+  if not arr.FromValue(v) then exit;
   if arr.l > 0 then begin
     SetLength(Result, arr.l);
     for i := 0 to arr.l - 1 do
@@ -422,7 +422,10 @@ begin
         end;
         cVAL_ARRAY: Result:= ArrayToVariant(v);
         cVAL_FUNCTION: ;
-        cVAL_ABSTRACT: ;
+        cVAL_ABSTRACT: begin
+        	if val_kind(v) = k_int32 then
+          	Result:= Integer(val_data(v));
+        end;
       end;
     end;
   end;
@@ -435,8 +438,9 @@ begin
   pVar:= FindVarData(v);
   case pVar^.VType of
     varNull, varUnknown: Result:= val_null;
-    varSmallint, varInteger, varShortInt, varWord:
+    varSmallint, varShortInt, varWord:
         Result:= alloc_int(v);
+    varInteger: Result:= alloc_best_int(v);
     varSingle, varDouble, varCurrency, varDate:
         Result:= alloc_float(v);
     varBoolean: Result:= alloc_bool(v);
@@ -470,6 +474,7 @@ const
   );
 begin
   ExportProtect:= TCriticalSection.Create;
+  if not NekoDLLIsLoaded then exit;
 	id__loader:= val_id('_loader');
 	id_loadprim:= val_id('loadprim');
   AddExportTable(CExport);

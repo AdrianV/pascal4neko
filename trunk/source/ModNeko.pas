@@ -59,6 +59,7 @@ type
   protected
     function Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode; override;
   public
+  	constructor Create(Server: TvsHTTPServer); override;
     destructor Destroy; override;
   end;
   THTTPRequest = class
@@ -520,34 +521,39 @@ begin
   end;
 end;
 
+constructor TModeNekoParser.Create(Server: TvsHTTPServer);
+begin
+  inherited;
+  FCache:= TThreadList.Create;
+end;
+
 destructor TModeNekoParser.Destroy;
 begin
-  if FCache <> nil then begin
-    while ClearCache(0) do;
-    FCache.Free;
-  end;
+	while ClearCache(0) do;
+  FreeAndNil(FCache);
   inherited;
 end;
 
 function TModeNekoParser.Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode;
 begin
   //InitModNeko;
-  if FCache = nil then
-    FCache:= TThreadList.Create;
   Handler.FMode:= cmDONE;
-  with THTTPRequest.Create(Self, Handler, FileName) do try
-    H.FResponse.ResponseCode := 200;
-    if not DoRequest then
-      H.FResponse.ResponseCode := 503; //Service unavailable
-  finally
-    Free;
+  //DbgTrace(FileName);
+  if FCache <> nil then begin
+    with THTTPRequest.Create(Self, Handler, FileName) do try
+      H.FResponse.ResponseCode := 200;
+      if not DoRequest then
+        H.FResponse.ResponseCode := 503; //Service unavailable
+    finally
+      Free;
+    end;
+    if (Handler.FResponse.ResponseCode <> 200)
+      or (Handler.FRequest.Command = 'POST')
+    then
+      Result := cmCLOSE
+    else
+      Result := cmDONE;
   end;
-  if (Handler.FResponse.ResponseCode <> 200)
-    or (Handler.FRequest.Command = 'POST')
-  then
-    Result := cmCLOSE
-  else
-    Result := cmDONE;
   Result := cmDONE
 end;
 
