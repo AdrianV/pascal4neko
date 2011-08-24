@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ...
  * @author Adrian Veith
  */
@@ -17,23 +17,23 @@ private class I {
 	public static function readSection(_i: Void, Section: String): NativeArray < NativeString > { return null; }
 	public static function readSectionKeys(_i: Void, Section: String): NativeArray<NativeString> { return null; }
 
-	public static function writeString(_i: Void, Section: String, Key: String, val: String);
-	public static function writeInt(_i: Void, Section: String, Key: String, val: Int);
-	public static function writeBool(_i: Void, Section: String, Key: String, val: Bool);
-	public static function writeDateTime(_i: Void, Section: String, Key: String, val: Float);
-	public static function writeFloat(_i: Void, Section: String, Key: String, val: Float);
+	public static function writeString(_i: Void, Section: String, Key: String, val: String) { return null; }
+	public static function writeInt(_i: Void, Section: String, Key: String, val: Int) { return null; }
+	public static function writeBool(_i: Void, Section: String, Key: String, val: Bool) { return null; }
+	public static function writeDateTime(_i: Void, Section: String, Key: String, val: Float) { return null; }
+	public static function writeFloat(_i: Void, Section: String, Key: String, val: Float) { return null; }
 
 	public static function KeyExists(_i: Void, Section: String, Key: String): Bool { return null; }
 	public static function SectionExists(_i: Void, Section: String): Bool { return null; }
-	public static function eraseKey(_i: Void, Section: String, Key: String);
-	public static function eraseSection(_i: Void, Section: String);
+	public static function eraseKey(_i: Void, Section: String, Key: String) { return null; }
+	public static function eraseSection(_i: Void, Section: String) { return null; }
 	
-	public static function updateFile(_i: Void);
+	public static function updateFile(_i: Void) { return null; }
 	
-	public static function createIniFile(FileName: String): Void;
-	public static function createMemIniFile(FileName: String): Void;
-	public static function createRegIniFile(FileName: String): Void;
-	public static function createWebIniFile(FileName: String): Void;
+	public static function createIniFile(FileName: String): Void { return null; }
+	public static function createMemIniFile(FileName: String): Void { return null; }
+	public static function createRegIniFile(FileName: String): Void { return null; }
+	public static function createWebIniFile(FileName: String): Void { return null; }
 
 }
 
@@ -51,7 +51,7 @@ class CustomIniFile extends TObject
 		FileName = AFileName;
 	}
 
-	public function getSections(): Array < String > { return I.getSections(_i); }
+	public function getSections(): Array < String > { return cast p4n.Tools.toHaXe(I.getSections(_i)); }
 	public function readString(Section: String, Key: String, Default: String): String { return NativeString.toString( I.readString(_i, Section, Key, Default)); }
 	public function readInt(Section: String, Key: String, Default: Int): Int { return I.readInt(_i, Section, Key, Default); }
 	public function readBool(Section: String, Key: String, Default: Bool): Bool { return I.readBool(_i, Section, Key, Default); }
@@ -110,7 +110,8 @@ class IniFile extends CustomIniFile
 	static public function __init__() {
 		var call = null;
 		try {
-			call = neko.Lib.load('p4n_std.dll', '_init_std', 1) ('p4n_inifiles');
+		    var c1 = neko.Lib.load('p4n_std.dll', '_init_std', 1);
+			call = c1('p4n_inifiles');
 		} catch (e: Dynamic) {
 			call = neko.Lib.load('p4n_inifiles.dll', '_init', 1);
 		}

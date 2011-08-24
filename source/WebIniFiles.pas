@@ -3,7 +3,7 @@ unit WebIniFiles;
 interface
 uses
   SysUtils, Classes, IniFiles, Registry, blcksock, synautil, synacode, httpsend,
-  p4nHelper, nekoHelper, //Helper,
+  p4nHelper, ProxySettings, //nekoHelper, //Helper,
 {$IFDEF WIN32}
   //HelperWin,
 {$ENDIF}
@@ -11,6 +11,7 @@ uses
 
 type
   PIniStack = ^TIniStack;
+  TLoadProgressCallback = procedure(BytesLoaded, BytesTotal: Integer) of object;
   ILoadStream = interface
     ['{2F4FF917-375F-4103-B147-BFCDCC29D15B}']
     function GetStream: TStream;
@@ -59,6 +60,7 @@ type
     pIni: TWebIniFile;
   protected
     FIdent: string;
+    FSec: string;
     function GetIni(const s: string): TWebIniFile;
     procedure LoadValues;
     procedure Rename(const FileName: string; Reload: Boolean);
@@ -75,8 +77,8 @@ type
     next: PIniStack;
   end;
 
-function OpenStream(const AFileName: string): ILoadStream;
-function CheckUpdate(AppName: string = ''): IWebUpdate;
+function OpenStream(const AFileName: string; ACallback: TLoadProgressCallback = nil): ILoadStream;
+function CheckUpdate(const AppName: string = ''; const AParams: string = ''; ACallback: TLoadProgressCallback = nil): IWebUpdate;
 
 implementation
 
@@ -85,20 +87,25 @@ type
   private
     FStream: TStream;
     FObject: TObject;
+    FCallback: TLoadProgressCallback;
     function GetStream: TStream;
+    procedure HookSocket(Sender: TObject; Reason: THookSocketReason; const Value: String);
   protected
     destructor Destroy; override;
-    constructor Create(const AFileName: string);
+    constructor Create(const AFileName: string; ACallback: TLoadProgressCallback);
   end;
   TWebUpdate = class (TInterfacedObject, IWebUpdate)
   private
     FAppName: string;
     FIni: TWebIniFile;
+    FParams: string;
+    FCallback: TLoadProgressCallback;
   protected
     function NeedUpdate(): Boolean;
     function DownloadUpdate: Boolean;
     function RunUpdate(const Param: string = ''): Boolean;
   public
+  	constructor Create(ACallback: TLoadProgressCallback);
     destructor Destroy; override;
   end;
 
@@ -132,7 +139,9 @@ begin
     t.name:= '';
     Dispose(t);
   end;
-  inherited;
+	FIdent:= '';  
+  FSec:= '';
+	inherited;
 end;
 
 function TWebIniFile.Expand(const s: string): string;
@@ -144,10 +153,11 @@ var
 
   function Convert(s: string): string;
   var
-    s1, p1, p2, p3, sIdent: string;
+    s1, p1, p2, p3, sIdent, sSec: string;
     ini: TWebIniFile;
   begin
     sIdent:= FIdent;
+    sSec:= FSec;
     s1:= SplitString(s, ':');
     ini:= nil;
     if SameText(s1, 'ini') then try
@@ -206,11 +216,18 @@ var
       Result:='{';
     end else if s1 = '>' then begin
       Result:='}';
+    end else if s1 = '^' then begin
+      Result:='^';
+    end else if s1 = '~' then begin
+      Result:='~';
     end else if SameText(s1, 'key') then begin
       Result:=FIdent;
+    end else if SameText(s1, 'sec') then begin
+      Result:=FSec;
     end else
       Result:= s1;
     FIdent:= sIdent;
+    FSec:= sSec;
   end;
 
   function Pop: string;
@@ -246,6 +263,18 @@ begin
   i:= 1;
   x:= 1;
   try
+  	if (ls > 0) then begin
+    	case s[i] of
+      	'^': begin
+	      	Result:= s;
+  		    exit;
+        end;
+      	'~': begin
+	      	Result:= copy(s, 2, ls);
+  		    exit;
+        end;
+      end;
+    end;
     while i <= ls do begin
       case s[i] of
         '{': begin
@@ -254,7 +283,10 @@ begin
           x:= i + 1;
         end;
         '}': begin
-          Result:= Pop + Convert(Result + copy(s, x, i - x));
+        	if (Result <> '') and (Result[1]='#') then
+          	Result:= Pop + Expand(copy(Result, 2, MaxInt) + copy(s, x, i - x))
+          else
+	          Result:= Pop + Convert(Result + copy(s, x, i - x));
           x:= i + 1;
           case s[x] of
             '\','/': if (Result <> '') and (Result[Length(Result)] = s[x]) then begin
@@ -343,15 +375,33 @@ begin
   end;
 end;
 
+//var
+//	cnt_plan: Integer = 0;
+
 function TWebIniFile.ReadString(const Section, Ident, Default: string): string;
 var
   s: string;
+  i, j: Integer;
 begin
+	FSec:= Section;
   FIdent:= Ident;
   s:= inherited ReadString(Section, Ident, Default);
   Result:= Expand(s);
   if (Result = '') and (s <> '') then
     Result:= Expand(Default);
+  {if Result = 'D:\Borland\Delphi5\Projects\Planung\TIM.ini' then begin
+    Result:= LowerCase(Result);
+    j:= 0;
+    for i := 0 to Length(Result) do
+    	case Result[i] of
+      	'a'..'z': begin  
+           Result[i]:= Char(Ord(Result[i]) - (Ord('a') - Ord('A')));	
+        	 if j = cnt_plan then break;
+           inc(j);
+        end;  
+      end;
+    inc(cnt_plan);  
+  end;}
 end;
 
 procedure TWebIniFile.Rename(const FileName: string; Reload: Boolean);
@@ -363,16 +413,30 @@ end;
 
 { TLoadStream }
 
-constructor TLoadStream.Create(const AFileName: string);
+constructor TLoadStream.Create(const AFileName: string; ACallback: TLoadProgressCallback);
 begin
   if StartsWith('http://', AFileName)
     or StartsWith('https://', AFileName)
   then begin
     FObject:= THTTPSend.Create;
+    if Assigned(ACallback) then begin
+      FCallback:= ACallback;
+      THTTPSend(FObject).Sock.OnStatus:= HookSocket;
+    end;
+    SetProxy(THTTPSend(FObject), AFileName);
     if THTTPSend(FObject).HTTPMethod('GET', AFileName)
       and (THTTPSend(FObject).ResultCode = 200)
     then
-      FStream:= THTTPSend(FObject).Document;
+      FStream:= THTTPSend(FObject).Document
+    else if THTTPSend(FObject).ProxyHost <> '' then begin
+    	FObject.Free;
+      FObject:= THTTPSend.Create;
+    	THTTPSend(FObject).ProxyHost:= '';
+	    if THTTPSend(FObject).HTTPMethod('GET', AFileName)
+  	    and (THTTPSend(FObject).ResultCode = 200)
+    	then
+      	FStream:= THTTPSend(FObject).Document
+    end;
   end else begin
     if FileExists(AFileName) then begin
       FStream:= TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
@@ -394,9 +458,16 @@ begin
   Result:= FStream;
 end;
 
-function OpenStream(const AFileName: string): ILoadStream;
+procedure TLoadStream.HookSocket(Sender: TObject; Reason: THookSocketReason;
+  const Value: String);
 begin
-  Result:= TLoadStream.Create(AFileName);
+	if Reason = HR_ReadCount then
+  	FCallback(THTTPSend(FObject).sock.RecvCounter , THTTPSend(FObject).DownloadSize);
+end;
+
+function OpenStream(const AFileName: string; ACallback: TLoadProgressCallback): ILoadStream;
+begin
+  Result:= TLoadStream.Create(AFileName, ACallback);
 end;
 
 { TWebPath }
@@ -478,17 +549,23 @@ end;
 
 { TWebUpdate }
 
-function CheckUpdate(AppName: string = ''): IWebUpdate;
+function CheckUpdate(const AppName: string; const AParams: string; ACallback: TLoadProgressCallback): IWebUpdate;
 var
   me: TWebUpdate;
 begin
-  me:= TWebUpdate.Create;
+  me:= TWebUpdate.Create(ACallback);
   if AppName = '' then
     me.FAppName:= ExtractFileName(ParamStr(0))
   else
     me.FAppName:= AppName;
+  me.FParams:= AParams;
   me.FIni:= TWebIniFile.Create(ApplicationPath + 'Versions.ini');
   Result:= me;
+end;
+
+constructor TWebUpdate.Create(ACallback: TLoadProgressCallback);
+begin
+	FCallback:= ACallback;
 end;
 
 destructor TWebUpdate.Destroy;
@@ -527,7 +604,7 @@ begin
   sMD5:= FIni.ReadString('-', '-', Format('{ini:%s,%s,MD5}',[sControl, FAppName]));
   sDown:= AddPath(sDown, sUpd);
   if FileExists(sDown) then begin
-    load:= OpenStream(sDown);
+    load:= OpenStream(sDown, FCallback);
     Result:= (load.Stream <> nil) and ((sMD5 = '') or TestMD5(load.Stream, sMD5));
     load:= nil;
     if Result then
@@ -543,7 +620,7 @@ begin
     end;
   end;
   DbgTraceFmt('download from %s to %s', [AddPath(sWeb, sUpd), sDown]);
-  load:= OpenStream(AddPath(sWeb, sUpd));
+  load:= OpenStream(AddPath(sWeb, sUpd), FCallback);
   if (load.Stream <> nil) and (load.Stream.Size > 0) then begin
     try
       if (sMD5 = '') or TestMD5(load.Stream, sMD5) then begin
@@ -575,6 +652,9 @@ var
 begin
   with Fini do begin
     sControl:= AddPath(FIni.ReadString(FAppName, 'UpdatePath', '{ini:,INIT,{key}}'), FIni.ReadString(FAppName, 'Control', '{ini:,INIT,{key}|current.ini}'));
+		if (FParams <> '') and (Pos('\', sControl) = 0) then begin
+			sControl:= sControl + '?' + FParams;    
+    end;
     Result:=(ReadString('INIT', 'Version', '0') = ReadString('-', '-', Format('{ini:%s,INIT,Version|0}',[sControl])));
     if Result then begin
       iVersInst:=ReadInteger('INSTALLED', FAppName, 0);

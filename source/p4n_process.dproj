@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ProjectGuid>{52606c5f-64d2-4de3-b45d-cd2f028b073a}</ProjectGuid>
@@ -6,7 +6,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-    <DCC_DependencyCheckOutputName>E:\Programme\Motion-Twin\neko\p4n_process.dll.ndll</DCC_DependencyCheckOutputName>
+    <DCC_DependencyCheckOutputName>C:\Programme\Motion-Twin\neko\p4n_process.dll.ndll</DCC_DependencyCheckOutputName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Version>7.0</Version>
@@ -18,7 +18,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <Version>7.0</Version>
     <DCC_Define>DEBUG</DCC_Define>
-    <DCC_ExeOutput>E:\Programme\Motion-Twin\neko</DCC_ExeOutput>
+    <DCC_ExeOutput>C:\Programme\Motion-Twin\neko</DCC_ExeOutput>
   </PropertyGroup>
   <ProjectExtensions>
     <Borland.Personality>Delphi.Personality</Borland.Personality>

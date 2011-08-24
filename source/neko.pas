@@ -97,6 +97,8 @@ uses
 {$ENDIF}
   SysConst,
   SysUtils,
+  //Forms,
+  p4nHelper,
   Classes;
 
 {$IFDEF FPC}
@@ -303,7 +305,7 @@ type
 
   Tfinalizer = procedure (v: value);cdecl;
   Tneko_printer = procedure (const data: PChar; size: Integer; param: Pointer); cdecl;
-  Tthread_main_func = function (param: Pointer): Integer; cdecl;
+  Tthread_main_func = procedure (param: Pointer); cdecl;
   Tneko_stat_func = procedure(vm: Pneko_vm; const kind: PChar; start: Integer); cdecl;
 
   TFieldIterProc_c_prim = procedure ( v: value; f: Tfield; data: Pointer); cdecl;
@@ -311,7 +313,7 @@ type
   TFieldIterMethod = procedure ( v: value; f: Tfield; data: Pointer) of object;
   TReaderProc = procedure (p: readp; buf: Pointer; size: Integer); cdecl;
   TNekoArray = array of value;
-
+  
 function alloc_bool(v: Boolean): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_best_int(i : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_int(v : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -358,6 +360,7 @@ function val_call(f: value; const args: array of value; exc: Pvalue = nil): valu
 function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue = nil): value; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_HaxeString(v: value): Boolean;
 function val_HaxeString(v: value): string;
+function val_HaxePChar(v: value): PChar;
 
 var
   alloc_abstract: function (k: vkind; data: Pointer): value; cdecl;
@@ -412,6 +415,7 @@ var
   neko_gc_stats: procedure(var Aheap, Afree: Integer); cdecl;
   neko_thread_create: function(init, main: Tthread_main_func; param: Pointer; var handle: Pointer): Integer; cdecl;
   neko_thread_blocking: procedure(f: Tthread_main_func; p: Pointer); cdecl;
+  neko_thread_register: function(t: Boolean): Boolean; cdecl;
   
   neko_vm_alloc: function(custom: Pointer): Pneko_vm; cdecl;
   neko_vm_current: function: Pneko_vm; cdecl;
@@ -429,7 +433,7 @@ var
   neko_vm_dump_stack: procedure(vm: Pneko_vm); cdecl;
   neko_is_big_endian: function: Integer; cdecl;
   neko_read_module: function (AReader: TReaderProc; p: readp; loader: value ): Pneko_module; cdecl;
-
+  
   alloc_local: function(): mt_local; cdecl;
   local_get: function(l: mt_local): Pointer; cdecl;
   local_set: procedure(l: mt_local; v: Pointer); cdecl;
@@ -500,6 +504,7 @@ procedure StreamReader(p: readp; buf: Pointer; size: Integer); cdecl;
 function ValueToString(v: value): string;
 function NekoSaveException(e: Exception): value;
 procedure NekoThrowException(v: value);
+function NekoDLLIsLoaded: Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 
 var
   EmbeddedNeko: Pneko_vm;
@@ -520,6 +525,11 @@ type
 
 var
   HNEKO: HMODULE;
+
+function NekoDLLIsLoaded: Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+begin
+	Result:= HNEKO <> 0;
+end;
 
 procedure add_function(c: value; const Name: string; code: Pointer; Args: Integer);
 begin
@@ -656,6 +666,7 @@ begin
     neko_gc_stats:= GetProcAddress(HNEKO, 'neko_gc_stats');
     neko_thread_create:= GetProcAddress(HNEKO, 'neko_thread_create');
     neko_thread_blocking:= GetProcAddress(HNEKO, 'neko_thread_blocking');
+    neko_thread_register:= GetProcAddress(HNEKO, 'neko_thread_register');
     neko_vm_alloc:= GetProcAddress(HNEKO, 'neko_vm_alloc');
     neko_vm_current:= GetProcAddress(HNEKO, 'neko_vm_current');
     neko_exc_stack:= GetProcAddress(HNEKO, 'neko_exc_stack');
@@ -705,6 +716,8 @@ begin
     TestObjTable;
   except
     UnloadNeko;
+  end else begin
+    DbgTrace('cannot load '+ neko_library);
   end;
   //writeln(' ...done');
 end;
@@ -930,6 +943,15 @@ begin
     Result:= val_string(v);
 end;
 
+function val_HaxePChar(v: value): PChar;
+begin
+  Result:= nil;
+  if val_is_object(v) then
+    v:= val_field(v, id_string);
+  if val_is_string(v) then
+    Result:= val_string(v);
+end;
+
 function val_call(f: value; const args: array of value; exc: Pvalue): value;
 var
   n: Integer;
@@ -994,6 +1016,7 @@ begin
       o:= TObject(vabstract(v).data);
       if o = nil then exit;
       vabstract(v).data:= nil;
+      val_gc(v, nil);
       if o is TInterfacedObject then begin
         if TInterfacedObject(o).RefCount = 0 then
           o.Free;
@@ -1235,6 +1258,7 @@ begin
 end;
 
 initialization
+	//Application.MessageBox('Blah', 'Blah');
   LoadNeko;
   //assert(val_int(alloc_int(-1)) = -1);
   //assert(val_int(alloc_int(-MaxInt div 2)) = -MaxInt div 2);

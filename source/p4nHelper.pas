@@ -39,6 +39,7 @@ type
   TDynamicByteArray = array of byte;
 	TDynamicStringArray = array of string;
 
+function DSAFromConst(const A: array of string): TDynamicStringArray;  
 function _Is_(AObject: TObject; AClass: TClass): Boolean;
 function AddPath(const P1, P2: string): string;
 function ApplicationPath: string;
@@ -46,7 +47,7 @@ function ApplicationPath: string;
 function CheckClass(AObject: TObject; AClass: TClass; var ResObject{: TObject}): Boolean; {$ifdef COMPILER_INLINE} inline; {$endif}
 function CheckPointer(APointer: Pointer; var ResPointer): Boolean; {$ifdef COMPILER_INLINE} inline; {$endif}
 function Closure(Code: Pointer; Data: TObject): TMethod; {$ifdef COMPILER_INLINE} inline; {$endif}
-procedure DbgTrace(const Msg: String); overload;
+procedure DbgTrace(const Msg: AnsiString); overload;
 procedure DbgTrace(const Msg: WideString); overload;
 procedure DbgTraceFmt(const Fmt: String; const Args: array of const); overload;
 procedure DbgTraceFmt(const Fmt: WideString; const Args: array of const); overload;
@@ -71,6 +72,15 @@ var
   DoDbgTrace: Boolean = True;
 
 implementation
+
+function DSAFromConst(const A: array of string): TDynamicStringArray;
+var
+	i, m: Integer;
+begin
+	m:= Length(A);
+	SetLength(Result, m);
+  for i := 0 to m - 1 do Result[i]:= A[i];
+end;
 
 function _Is_(AObject: TObject; AClass: TClass): Boolean;
 
@@ -161,14 +171,14 @@ begin
   Result.Data:= Data;
 end;
 
-procedure DbgTrace(const Msg: String);
+procedure DbgTrace(const Msg: AnsiString);
 begin
 	if not DoDbgTrace then
 		exit;
 {$IFDEF LINUX}
 {$ELSE}
 //{$IFDEF MSWINDOWS}
-	OutputDebugStringA(PChar(Msg));
+	OutputDebugStringA(PAnsiChar(Msg));
 {$ENDIF}
 end;
 
@@ -316,7 +326,7 @@ function ExtractFileNameOnly(const aFile: string): string;
 var
 	i:	integer;
 begin
-	result := ExtractFileName(aFile);
+	result := ExtractFileNameWeb(aFile);
 	for i:= length(result) downto 1 do
 		if result[i]='.' then break;
 	if i > 1 then

@@ -8,7 +8,10 @@ uses
   SysConst,
   SysUtils,
   Classes,
-  neko, nekoHelper, Helper,
+  neko, 
+  nekoHelper, 
+  p4nHelper,
+  Helper,
   p4nInifiles;
 
   function _init_std__1: pointer; cdecl;
@@ -16,7 +19,8 @@ uses
 
 implementation
 
-threadvar
+var
+  myFormatLoaded: Boolean;
   myFormat: TFormatSettings;
 
 function setFormat(v: value): value; cdecl;
@@ -164,7 +168,10 @@ end;
 function init(I: value): value; cdecl;
 begin
 {$IFDEF MSWINDOWS}
-  GetLocaleFormatSettings(GetThreadLocale, myFormat);
+	if not myFormatLoaded then begin
+  	GetLocaleFormatSettings(GetThreadLocale, myFormat);
+    myFormatLoaded:= True;
+  end;
 {$ENDIF}
   add_function(I, 'format', @format, 2);
   add_function(I, 'formatFloat', @formatFloat, 2);
@@ -193,6 +200,7 @@ end;
 
 function _init_std__1: pointer; cdecl;
 begin
+	//DbgTrace('called init');
   result:= @init_std;
 end;
 
