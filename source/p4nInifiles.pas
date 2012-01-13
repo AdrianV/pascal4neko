@@ -265,7 +265,7 @@ end;
 
 function createRegIniFile(Name: value): value; cdecl;
 begin
-  Result:= TObject_GC(TRegIniFile.Create(val_HaxeString(Name)));
+  Result:= TObject_GC(TRegistryIniFile.Create(val_HaxeString(Name)));
 end;
 
 function createWebIniFile(Name: value): value; cdecl;

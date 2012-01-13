@@ -414,6 +414,8 @@ end;
 { TLoadStream }
 
 constructor TLoadStream.Create(const AFileName: string; ACallback: TLoadProgressCallback);
+var
+	fs: TFileStream;
 begin
   if StartsWith('http://', AFileName)
     or StartsWith('https://', AFileName)
@@ -439,8 +441,15 @@ begin
     end;
   end else begin
     if FileExists(AFileName) then begin
-      FStream:= TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-      FObject:= FStream;
+      fs:= TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+      try
+	      FStream:= TMemoryStream.Create;
+	      FObject:= FStream;
+  	    FStream.CopyFrom(fs, 0);
+        FStream.Position:= 0;
+      finally
+      	fs.Free;
+      end;
     end;
   end;
 end;
@@ -672,7 +681,7 @@ var
   sDown, sControl, sUpd, sParam: string;
 begin
   Result:= False;
-  sDown:= ExcludeTrailingPathDelimiter( FIni.ReadString(FAppName, 'DownloadPath', '{env:TEMP}'));
+  sDown:= ExcludeTrailingPathDelimiter( FIni.ReadString(FAppName, 'DownloadPath', '{ini:,INIT,DownloadPath|{env:TEMP}}'));
   sControl:= AddPath(FIni.ReadString(FAppName, 'UpdatePath', '{ini:,INIT,{key}}'), FIni.ReadString(FAppName, 'Control', '{ini:,INIT,{key}|current.ini}'));
   sUpd:= FIni.ReadString('-', '-', Format('{ini:%s,%s,Update}',[sControl, FAppName]));
   sParam:= FIni.ReadString('-', '-', Format('{ini:%s,%s,Parameter}',[sControl, FAppName]));

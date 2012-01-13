@@ -81,7 +81,7 @@ interface
   {$DEFINE COMPILER_INLINE}
 {$ENDIF}
 
-{$UNDEF COMPILER_INLINE}
+{.$UNDEF COMPILER_INLINE}
 {$IFDEF COMPILER_INLINE}
 {$INLINE ON}
 {$ENDIF}
@@ -141,8 +141,8 @@ const
 type
   Tint_val = Integer; // !! not 64 bit compatible
   Pint_val = ^Tint_val;
-  Tval_type =  Longint;
-  Tfield = longint;
+  Tval_type =  Longword;
+  Tfield = Longword;
   Tvalue = record
     t : Tval_type;
   end;
@@ -504,7 +504,7 @@ procedure StreamReader(p: readp; buf: Pointer; size: Integer); cdecl;
 function ValueToString(v: value): string;
 function NekoSaveException(e: Exception): value;
 procedure NekoThrowException(v: value);
-function NekoDLLIsLoaded: Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function NekoDLLIsLoaded: Boolean; 
 
 var
   EmbeddedNeko: Pneko_vm;
@@ -526,7 +526,7 @@ type
 var
   HNEKO: HMODULE;
 
-function NekoDLLIsLoaded: Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function NekoDLLIsLoaded: Boolean; 
 begin
 	Result:= HNEKO <> 0;
 end;
@@ -572,6 +572,7 @@ begin
   neko_vm_select(EmbeddedNeko);
   neko_vm_jit(EmbeddedNeko, 1);
 end;
+
 function GetProto(v: value): value;
 begin
   if val_is_object(v) then begin
