@@ -7,13 +7,18 @@ package p4n;
 
 #if neko	
 
-class TraceOut 
+class DbgTraceOut 
 {
-	static var trace_out;
+	public static var trace_out(default, setTraceOut): String->Dynamic->Void;
+	
+	static function setTraceOut(v: String->Dynamic->Void) {
+		trace_out = v;
+		return v;
+	}
 	public static dynamic function trace( v : Dynamic, ?infos : haxe.PosInfos ) : Void {
 		trace_out(infos.fileName + ":" + infos.lineNumber + ": ", v);
 	}
-  static public function __init__() {
+	static public function __init__() {
 		try {	
 			trace_out = neko.Lib.load('p4n', 'trace_out', 2);
 		} catch (e: Dynamic) { trace_out = null; }
