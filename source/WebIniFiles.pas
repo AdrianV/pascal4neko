@@ -14,7 +14,11 @@ type
   TLoadProgressCallback = procedure(BytesLoaded, BytesTotal: Integer) of object;
   ILoadStream = interface
     ['{2F4FF917-375F-4103-B147-BFCDCC29D15B}']
+    function GetIsLocal: Boolean;
+    function GetFileName: String;
     function GetStream: TStream;
+    property IsLocal: Boolean read GetIsLocal;
+    property FileName: String read GetFileName;
     property Stream: TStream read GetStream;
   end;
   IWebPath = interface
@@ -85,9 +89,13 @@ implementation
 type
   TLoadStream = class (TInterfacedObject, ILoadStream)
   private
+  	FIsLocal: Boolean;
+  	FFileName: String;
     FStream: TStream;
     FObject: TObject;
     FCallback: TLoadProgressCallback;
+    function GetIsLocal: Boolean;
+    function GetFileName: String;
     function GetStream: TStream;
     procedure HookSocket(Sender: TObject; Reason: THookSocketReason; const Value: String);
   protected
@@ -417,6 +425,7 @@ constructor TLoadStream.Create(const AFileName: string; ACallback: TLoadProgress
 var
 	fs: TFileStream;
 begin
+	FFileName:= AFileName;
   if StartsWith('http://', AFileName)
     or StartsWith('https://', AFileName)
   then begin
@@ -441,6 +450,7 @@ begin
     end;
   end else begin
     if FileExists(AFileName) then begin
+    	FIsLocal:= True;
       fs:= TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
       try
 	      FStream:= TMemoryStream.Create;
@@ -460,6 +470,16 @@ begin
   //  DbgTraceFmt('close %s', [TFileStream(FStream).FileName]);
   FObject.Free;
   inherited;
+end;
+
+function TLoadStream.GetFileName: String;
+begin
+	Result:= FFileName;
+end;
+
+function TLoadStream.GetIsLocal: Boolean;
+begin
+	Result:= FIsLocal;
 end;
 
 function TLoadStream.GetStream: TStream;

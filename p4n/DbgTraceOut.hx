@@ -16,7 +16,7 @@ class DbgTraceOut
 		return v;
 	}
 	public static dynamic function trace( v : Dynamic, ?infos : haxe.PosInfos ) : Void {
-		trace_out(infos.fileName + ":" + infos.lineNumber + ": ", v);
+		trace_out(if (infos != null) infos.fileName + ":" + infos.lineNumber + ": " else "", v);
 	}
 	static public function __init__() {
 		try {	

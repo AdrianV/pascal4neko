@@ -8,7 +8,7 @@
 { ANY KIND, either express or implied. See the License for the specific language governing rights  
 { and limitations under the License.                                                               
 {                                                                                                  
-{ The Original Code is Process.hx.                                                                   
+{ The Original Code is MathX.hx.                                                                   
 {                                                                                                  
 { The Initial Developer of the Original Code is Adrian Veith <adrian@veith-system.de>.             
 { Portions created by Adrian Veith Copyright (C) Adrian Veith. All Rights Reserved.                
@@ -20,57 +20,48 @@
 
 package p4n;
 
-#if neko
-import neko.NativeString;
-
-private class I {
-	public static function getState(_p: Void): Int { return null; }
-	public static function setHandler(_p: Void, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
-	public static function startProcess(_p: Void, cmd: String, ?args: Array<String>): Void {}
-	public static function terminate(_p: Void): Void {}
-	public static function write(_p: Void, s: String): Void {}
-	public static function writeln(_p: Void, s: String): Void {}
-	public static function createProcess(): Void {}
-}
-
-class Process {
-
-	private var _p: Void;
-	public function new() {
-		_p = I.createProcess();
-	}
-	public function free() {
-		_p = null;
+class MathX 
+{
+	static public inline function frac(value: Float): Float {
+		return if (value >= 0) value - Math.floor(value) else value - Math.ceil(value);
 	}
 
-	public function getState(): Int { 
-		return I.getState(_p); 
-	}
-
-	public function setHandler(onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void 
-	{ 
-		I.setHandler(_p, onRead, onTerminate, onError);
-	}
-	public function startProcess(cmd: String, ?args: Array<String>): Void
-	{
-		I.startProcess(_p, cmd, args);
-	}
-	public function terminate(): Void
-	{
-		I.terminate(_p);
-	}
-	public function write(s: String): Void
-	{
-		I.write(_p, s);
-	}
-	public function writeln(s: String): Void
-	{
-		I.writeln(_p, s);
+	static public inline function trunc(value: Float): Float {
+		return if (value >= 0) Math.floor(value) else Math.ceil(value);
 	}
 	
-	static public function __init__() {
-		neko.Lib.load('p4n_process.dll', '_init', 1) (I);
+	static var stellen = [0.00000001,0.0000001,0.000001,0.00001,0.0001,0.001,0.01,0.1,
+		1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0, 100000000.0];
+		
+	static public function round(x: Float, n: Int): Float {
+		if ((n > 8) || (n < -8)) {
+			return x;
+		} else {
+			var sf = stellen[n + 8];
+			var xx = x * sf;
+			return (trunc(xx) + trunc(frac(xx) * 2)) / sf;
+		}
+	}
+	
+	static public function roundUp(x: Float, n: Int): Float {
+		if ((n > 8) || (n < -8)) {
+			return x;
+		} else {
+			var sf = stellen[n + 8];
+			var xx = x * sf;
+			if (frac(xx) > 0) xx += 1;
+			return trunc(xx) / sf;
+		}
+	}
+
+	static public function roundDown(x: Float, n: Int): Float {
+		if ((n > 8) || (n < -8)) {
+			return x;
+		} else {
+			var sf = stellen[n + 8];
+			var xx = x * sf;
+			return trunc(xx) / sf;
+		}
 	}
 	
 }
-#end
