@@ -134,6 +134,13 @@ class Tools
 	static var _app_terminated;
 	static var _get_global;
 	static var _app_path;
+	
+	static public function idOf(aField: String): Int {
+		var dummy = { };	
+		Reflect.setField(dummy, aField, 0);
+		return untyped __dollar__objfields(dummy)[0];
+	}
+	
 	static public function __init__() {
 		untyped {
 			var temp = { __reference__: 0 };
