@@ -79,6 +79,7 @@ class DateTime
 	public static function decode(me: Float): DateRec {
 		if (me == null) return { day:0, month: 0, year: 0 };
 		var T: Int = toInt(me) + DateDelta;
+		if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
 		if (T <= 0) {
 			return { day: 0, year: 0, month: 0 };
 		} else {
