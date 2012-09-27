@@ -132,6 +132,11 @@ class DateTime
 		return decode(me).day;
 	}
 	
+	public static function monthDelta(d1: Float, d2: Float): Int {
+		var dd1 = decode(d1);
+		var dd2 = decode(d2);
+		return (dd1.month - dd2.month) + 12 * (dd1.year - dd2.year);
+	}
 	public static function lastDayOf(Month: Int, Year: Int): Int {
 		return if (isLeapYear(Year)) MD1[Month] else MD0[Month];
 	}
