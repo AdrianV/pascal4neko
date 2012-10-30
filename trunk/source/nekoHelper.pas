@@ -423,8 +423,13 @@ begin
         cVAL_ARRAY: Result:= ArrayToVariant(v);
         cVAL_FUNCTION: ;
         cVAL_ABSTRACT: begin
+        	{$ifdef neko_very_old}
         	if val_kind(v) = k_int32 then
           	Result:= Integer(val_data(v));
+          {$endif}
+        end;
+        cVAL_INT32 : begin
+        	Result:= val_int32(v);
         end;
       end;
     end;
