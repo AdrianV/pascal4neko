@@ -107,6 +107,7 @@ uses
 {$ALIGN 2} //????
 {$ENDIF}
 
+{$define neko_2_0}
 {$define xNEKO_DEBUG}
 const
 {$IFDEF MSWINDOWS}
@@ -129,10 +130,14 @@ const
   cVAL_ARRAY = 5;
   cVAL_FUNCTION = 6;
   cVAL_ABSTRACT = 7;
+  cVAL_INT32 = 8;
+  cVAL_PRIMITIVE = 6 or 16;
+  cVAL_JITFUN = 6 or 32;
+{$ifdef neko_very_old}
   cVAL_PRIMITIVE = 6 or 8;
   cVAL_JITFUN = 6 or 16;
+{$endif}
   cVAL_32_BITS = $FFFFFFFF;
-
   VAR_ARGS = -1;
   max_array_size	=	((1 shl 29) - 1);
   max_string_size	=	((1 shl 29) - 1);
@@ -260,6 +265,12 @@ type
     data : pointer;
   end;
   vabstract = ^Tvabstract;
+  
+  Tvint32 = record
+    t : Tval_type;
+    i : longint;
+  end;
+  nvint32 = ^Tvint32;
 
   Phcell = ^Thcell;
   Thcell = record
@@ -317,10 +328,10 @@ type
 function alloc_bool(v: Boolean): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_best_int(i : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_int(v : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function alloc_int32(v : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function need_32_bits(i : longint) : Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_kind(v: value): vkind; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_data(v: value): Pointer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function get_val_int32(v: value): LongInt; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_fun_nargs(f: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 
 function val_is_null(v : value) : Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -444,8 +455,11 @@ var
   lock_try: function(l: mt_lock): Integer; cdecl;
   lock_release: procedure(l: mt_lock); cdecl;
   free_lock: procedure(l: mt_lock); cdecl;
+	alloc_int32: function (v : longint) : value; cdecl;
 
+{$ifndef neko_2_0}
   k_int32: vkind;
+{$endif}  
   k_hash: vkind;
   neko_kind_module: vkind;
 
@@ -544,6 +558,11 @@ end;
 function val_data(v: value): Pointer;
 begin
   Result:= vabstract(v).data;
+end;
+
+function get_val_int32(v: value): LongInt;
+begin
+	Result:= nvint32(v).i;
 end;
 
 procedure dummy_error;
@@ -650,8 +669,11 @@ begin
     kind_export := GetProcAddress(HNEKO, 'neko_kind_export');
     kind_import := GetProcAddress(HNEKO, 'neko_kind_import');
     _neko_failure := GetProcAddress(HNEKO, '_neko_failure');
+		alloc_int32:= GetProcAddress(HNEKO, 'neko_alloc_int32');
 
+{$ifndef neko_2_0}
     k_int32:= PPointer(GetProcAddress(HNEKO, 'neko_k_int32'))^;
+{$endif}  
     k_hash:= PPointer(GetProcAddress(HNEKO, 'neko_k_hash'))^;
     neko_kind_module:= PPointer(GetProcAddress(HNEKO, 'neko_kind_module'))^;
     val_null:= Pvalue(GetProcAddress(HNEKO, 'val_null'))^;
@@ -725,7 +747,8 @@ end;
 
 function need_32_bits(i : longint) : Boolean;
 begin
-   Result:=(dword(i)) and $C0000000 <> 0;
+   //Result:=(dword(i)) and $C0000000 <> 0;
+   Result:=(dword(i) + $40000000) and $80000000 <> 0;
 end;
 
 function alloc_int(v : longint) : value;
@@ -734,10 +757,12 @@ begin
   Result:= value((v * 2) or 1);
 end;
 
+{$ifdef neko_very_old}
 function alloc_int32(v : longint) : value;
 begin
    Result:= alloc_abstract(k_int32, Pointer(v));
 end;
+{$endif}
 
 function alloc_bool(v: Boolean): value;
 begin
@@ -828,12 +853,12 @@ end;
 
 function val_is_int32(v: value): Boolean;
 begin
-  Result:= val_is_int(v) or val_is_kind(v, k_int32);
+  Result:= val_is_int(v) or (v.t = cVAL_INT32);
 end;
 
 function val_is_number(v : value): Boolean;
 begin
-  Result:= val_is_int32(v) or (v.t = cVAL_FLOAT);
+  Result:= val_is_int(v) or (v.t = cVAL_INT32) or (v.t = cVAL_FLOAT);
 end;
 
 procedure val_check_kind(v: value; k: vkind);
@@ -887,7 +912,7 @@ begin
   if val_is_int(v) then
     Result:= val_int(v)
   else
-    Result:= Integer(val_data(v));
+    Result:= nvint32(v).i;
 end;
 
 function val_number(v: value): Double;
@@ -897,7 +922,7 @@ begin
   else if val_is_float(v) then
     Result:= val_float(v)
   else
-    Result:= Integer(val_data(v));
+    Result:= nvint32(v).i;
 end;
 
 function val_hdata(v: value): vhash;
