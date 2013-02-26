@@ -25,8 +25,8 @@ import p4n.DateTime;
 class TDateTime 
 {
 	static inline var DateDelta: Int = 693594;
-	static inline var MD0 = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-	static inline var MD1 = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	static var MD0(default, null) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	static var MD1(default, null) = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 	static inline var D1: Int = 365;
   static inline var D4: Int = D1 * 4 + 1;
   static inline var D100: Int = D4 * 25 - 1;
@@ -164,7 +164,7 @@ class TDateTime
 		t = (t - h) * 60;
 		var m = Math.floor(t);
 		t = (t - m) * 60;
-		return {year: dt.year, month: dt.month, day: dt.day, hour: h, minute: m, sec: Tools.round(t, 3) };
+		return {year: dt.year, month: dt.month, day: dt.day, hour: h, minute: m, sec: MathX.round(t, 3) };
 	}
 	public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
 	public inline function toInt(): Int { return Math.floor(toFloat); }

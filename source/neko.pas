@@ -942,7 +942,7 @@ end;
 
 procedure val_set_length(v: value; len: Integer);
 begin
-  v.t:= (v.t and 7) or (len shl 3);
+  v.t:= (v.t and 7) or (Cardinal(len) shl 3);
 end;
 
 function val_array_size(v: value): Integer;
@@ -1157,7 +1157,7 @@ begin
   for i := 0 to val_array_size(st) -1 do begin
 		s := val_array_ptr(st)[i];
 		buffer_append(b,'Called from ');
-		if ( val_is_null(s) ) then
+		if ( (s = nil) or val_is_null(s) ) then
 			buffer_append(b,'a C (internal) function')
 		else if( val_is_string(s) ) then begin
 			buffer_append(b, val_string(s));

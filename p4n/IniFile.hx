@@ -19,65 +19,63 @@
 {**************************************************************************************************/
 
 package p4n;
-import neko.NativeString;
-import neko.NativeArray;
+import neko.Lib;
+import p4n.TObject;
+import p4n.Convert;
 
 private class I {
-	public static function getSections(_i: Void): Array < String > { return null; }
-	public static function readString(_i: Void, Section: String, Key: String, Default: String): NativeString { return null; }
-	public static function readInt(_i: Void, Section: String, Key: String, Default: Int): Int { return null; }
-	public static function readBool(_i: Void, Section: String, Key: String, Default: Bool): Bool { return null; }
-	public static function readDateTime(_i: Void, Section: String, Key: String, Default: Float): Float { return null; }
-	public static function readFloat(_i: Void, Section: String, Key: String, Default: Float): Float { return null; }
-	public static function readSection(_i: Void, Section: String): NativeArray < NativeString > { return null; }
-	public static function readSectionKeys(_i: Void, Section: String): NativeArray<NativeString> { return null; }
+	public static function getSections(_i: Object): NekoStringArray { return null; }
+	public static function readString(_i: Object, Section: String, Key: String, Default: String): NekoString { return null; }
+	public static function readInt(_i: Object, Section: String, Key: String, Default: Int): Int { return null; }
+	public static function readBool(_i: Object, Section: String, Key: String, Default: Bool): Bool { return null; }
+	public static function readDateTime(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
+	public static function readFloat(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
+	public static function readSection(_i: Object, Section: String): NekoStringArray { return null; }
+	public static function readSectionKeys(_i: Object, Section: String): NekoStringArray { return null; }
 
-	public static function writeString(_i: Void, Section: String, Key: String, val: String) { return null; }
-	public static function writeInt(_i: Void, Section: String, Key: String, val: Int) { return null; }
-	public static function writeBool(_i: Void, Section: String, Key: String, val: Bool) { return null; }
-	public static function writeDateTime(_i: Void, Section: String, Key: String, val: Float) { return null; }
-	public static function writeFloat(_i: Void, Section: String, Key: String, val: Float) { return null; }
+	public static function writeString(_i: Object, Section: String, Key: String, val: String) { return null; }
+	public static function writeInt(_i: Object, Section: String, Key: String, val: Int) { return null; }
+	public static function writeBool(_i: Object, Section: String, Key: String, val: Bool) { return null; }
+	public static function writeDateTime(_i: Object, Section: String, Key: String, val: Float) { return null; }
+	public static function writeFloat(_i: Object, Section: String, Key: String, val: Float) { return null; }
 
-	public static function KeyExists(_i: Void, Section: String, Key: String): Bool { return null; }
-	public static function SectionExists(_i: Void, Section: String): Bool { return null; }
-	public static function eraseKey(_i: Void, Section: String, Key: String) { return null; }
-	public static function eraseSection(_i: Void, Section: String) { return null; }
+	public static function KeyExists(_i: Object, Section: String, Key: String): Bool { return null; }
+	public static function SectionExists(_i: Object, Section: String): Bool { return null; }
+	public static function eraseKey(_i: Object, Section: String, Key: String) { return null; }
+	public static function eraseSection(_i: Object, Section: String) { return null; }
 	
-	public static function updateFile(_i: Void) { return null; }
+	public static function updateFile(_i: Object) { return null; }
 	
-	public static function createIniFile(FileName: String): Void { return null; }
-	public static function createMemIniFile(FileName: String): Void { return null; }
-	public static function createRegIniFile(FileName: String): Void { return null; }
-	public static function createWebIniFile(FileName: String): Void { return null; }
+	public static function createIniFile(FileName: String): Object { return null; }
+	public static function createMemIniFile(FileName: String): Object { return null; }
+	public static function createRegIniFile(FileName: String): Object { return null; }
+	public static function createWebIniFile(FileName: String): Object { return null; }
 
 }
 
 class CustomIniFile extends TObject 
 {
-	var _i: Void;
+	var _i: Object;
 	public var FileName: String;
 	
 	public override function release () {
 		TObject.Release(_i);
 	}
 	
-	public function new(i: Void, AFileName: String) {
+	public function new(i: Object, AFileName: String) {
 		_i = i;
 		FileName = AFileName;
 	}
 
-	public function getSections(): Array < String > { return cast p4n.Tools.toHaXe(I.getSections(_i)); }
-	public function readString(Section: String, Key: String, Default: String): String { return NativeString.toString( I.readString(_i, Section, Key, Default)); }
+	public function getSections(): Array < String > { return I.getSections(_i).toArray(); }
+	public function readString(Section: String, Key: String, Default: String): String { return I.readString(_i, Section, Key, Default).toString(); }
 	public function readInt(Section: String, Key: String, Default: Int): Int { return I.readInt(_i, Section, Key, Default); }
 	public function readBool(Section: String, Key: String, Default: Bool): Bool { return I.readBool(_i, Section, Key, Default); }
 	public function readDateTime(Section: String, Key: String, Default: Float): Float { return I.readDateTime(_i, Section, Key, Default); }
 	public function readFloat(Section: String, Key: String, Default: Float): Float { return I.readFloat(_i, Section, Key, Default); }
-	public function readSection(Section: String): Array < String > { trace(Section); return cast p4n.Tools.toHaXe(I.readSection(_i, Section)); }
+	public function readSection(Section: String): Array < String > { trace(Section); return I.readSection(_i, Section).toArray(); }
 
-	public function readSectionKeys(Section: String): Array < String > { 
-		var temp = I.readSectionKeys(_i, Section); 
-		return cast p4n.Tools.toHaXe( temp); 
-	}
+	public function readSectionKeys(Section: String): Array < String > { return I.readSectionKeys(_i, Section).toArray(); }
 
 	public function writeString(Section: String, Key: String, val: String) { I.writeString(_i, Section, Key, val); }
 	public function writeInt(Section: String, Key: String, val: Int) { I.writeInt(_i, Section, Key, val); }
