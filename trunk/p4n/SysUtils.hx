@@ -20,9 +20,6 @@
 
 package p4n;
 import neko.NativeString;
-import neko.io.Path;
-import neko.io.File;
-import neko.FileSystem;
 
 typedef FormatSettings = {
 	var ThousandSeparator: String;
@@ -73,12 +70,12 @@ class SysUtils {
   public static function forceDir(APath: String): Bool {
 		//trace(APath);
 		try {
-			var path = new Path(APath);
-			if (! FileSystem.exists(path.dir)) {
+			var path = new haxe.io.Path(APath);
+			if (! sys.FileSystem.exists(path.dir)) {
 				//trace('check: ' + path.dir);
 				if (forceDir(path.dir)) {
 					//trace('create: ' + path.dir);
-					FileSystem.createDirectory(path.dir);
+					sys.FileSystem.createDirectory(path.dir);
 				} else return false;
 			}
 			return true;

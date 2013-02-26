@@ -53,22 +53,19 @@ class Tools
 			var l = __dollar__asize(f);
 			while( i < l ) {
 				var v = __dollar__objget(o, f[i]);
-				switch (__dollar__typeof(v)) {
-					case __dollar__tstring: {
-						var s = neko.Utf8.encode(new String(v));
-						__dollar__objset(o, f[i], s);
-					}
-					case __dollar__tabstract: __dollar__objset(o, f[i], null); 
-					case __dollar__tobject: {
-						if (v.__s != null)
-							__dollar__objset(o, f[i], neko.Utf8.encode(v));
-					}
-					case __dollar__tarray: {
-						var a = neko.NativeArray.toArray(o); 
-						for (i in 0...a.length) exportObject(a[i]); 
-						__dollar__objset(o, f[i], a);
-					}
-					default: {}
+				var t = __dollar__typeof(v);
+				if (t == __dollar__tstring) {
+					var s = haxe.Utf8.encode(new String(v));
+					__dollar__objset(o, f[i], s);
+				} else if (t == __dollar__tabstract) { 
+					__dollar__objset(o, f[i], null); 
+				} else if (t == __dollar__tobject) {
+					if (v.__s != null)
+						__dollar__objset(o, f[i], haxe.Utf8.encode(v));
+				} else if (t== __dollar__tarray) {
+					var a = neko.NativeArray.toArray(o); 
+					for (i in 0...a.length) exportObject(a[i]); 
+					__dollar__objset(o, f[i], a);
 				}
 				i = i + 1;
 			}
@@ -86,15 +83,24 @@ class Tools
 	}
 	
 
-	static public function toHaXe(o: Dynamic): Dynamic {
-		
-		untyped switch (__dollar__typeof(o)) {
-			case __dollar__tstring: return NativeString.toString(o);
-			case __dollar__tobject: return NekoToHaxeObject(o);
-			case __dollar__tarray: var a = neko.NativeArray.toArray(o); for (i in 0...a.length) a[i] = toHaXe(a[i]); return a;
-			default: return o;
-		}
+	static public function toHaxe(o: Dynamic): Dynamic untyped {
+		switch( __dollar__typeof(v) ) {
+		case 0: return v;
+		case 1: return v;
+		case 2: return v;
+		case 3: return v;
+		case 4: return new String(v);
+		case 6:
+			var a = Array.new1(v,__dollar__asize(v));
+			for( i in 0...a.length )
+				a[i] = toHaxe(a[i]);
+			return a;
+		case 5: return NekoToHaxeObject(v);
+		default:
+			throw "Can't convert "+string(v);
+		}		
 	}
+	
 	static public function NekoToHaxeObject(o: Dynamic, ? proto: Dynamic, ? toUtf: Bool, ? stripAbstract: Bool): Dynamic {
 		if (o == null) return null;
 		untyped {
@@ -110,16 +116,16 @@ class Tools
 					continue;
 				}
 				var v = __dollar__objget(o, fx);
-				switch (__dollar__typeof(v)) {
-					case __dollar__tstring:
+				var t = __dollar__typeof(v);
+				if (t == __dollar__tstring) {
 						if (toUtf == null || !toUtf)
 							__dollar__objset(o, fx, new String(v));
 						else {
-							var s = neko.Utf8.encode(new String(v));
+							var s = haxe.Utf8.encode(new String(v));
 							__dollar__objset(o, fx, s);
 						}
-					case __dollar__tabstract: if (stripAbstract == true) {__dollar__objremove(o, fx); }
-					default: {}
+				} else if (t == __dollar__tabstract) {
+					if (stripAbstract == true) { __dollar__objremove(o, fx); }
 				}
 				i++;
 			}
@@ -169,10 +175,6 @@ class Tools
 	static public function AppPath(): String { return if (_app_path != null) NativeString.toString(_app_path()) else ""; }
 
 #end
-	static public inline function frac(value: Float): Float { return MathX.frac(value); }
-	static public inline function trunc(value: Float): Float { return MathX.trunc(value); }		
-	static public inline function round(x: Float, n: Int): Float { return MathX.round(x, n); }
-
 	static public inline function def < T > (Value: T, DefValue: T): T { return if (Value != null) Value else DefValue; }
 	static public function IncludeTrailingPathDelimter(path: String): String {
 		var c1 = path.lastIndexOf("/");

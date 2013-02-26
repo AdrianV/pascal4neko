@@ -20,9 +20,11 @@
 
 package p4n;
 
+@:coreType abstract Object { }
+
 class TObject {
 
-  public static dynamic function Release(AObject: Void): Bool {
+  public static dynamic function Release(AObject: Object): Bool {
     Release = neko.Lib.load('nekoHelper', 'release', 1); 
     return Release(AObject); 
   }

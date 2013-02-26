@@ -9,9 +9,9 @@ package p4n;
 
 class DbgTraceOut 
 {
-	public static var trace_out(default, setTraceOut): String->Dynamic->Void;
+	public static var trace_out(default, set): String->Dynamic->Void;
 	
-	static function setTraceOut(v: String->Dynamic->Void) {
+	static function set_trace_out(v: String->Dynamic->Void) {
 		trace_out = v;
 		return v;
 	}
