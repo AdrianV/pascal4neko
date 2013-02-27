@@ -42,9 +42,9 @@ abstract DateTime(Float) from Float to Float
 	static inline var D4: Int = D1 * 4 + 1;
 	static inline var D100: Int = D4 * 25 - 1;
 	static inline var D400: Int = D100 * 4 + 1;
-	static public inline var HOURS: DateTime = 1 / 24;
-	static public inline var MINUTES: DateTime = 1 / (24 * 60);
-	static public inline var SECONDS: DateTime = 1 / (24 * 60 * 60);
+	static public inline var HOURS: Float = 1 / 24;
+	static public inline var MINUTES: Float = 1 / (24 * 60);
+	static public inline var SECONDS: Float = 1 / (24 * 60 * 60);
 	static public var ISOFirstWeekDay: Int = 0; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
@@ -56,11 +56,23 @@ abstract DateTime(Float) from Float to Float
 	@:op(A - B) static public function sub2(lhs:DateTime, rhs:DateTime):DateTime;
 	@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
 	@:op(A / B) static public function div1(lhs:DateTime, rhs:Float):Float;
-	@:op(A < B) static public function lt(lhs:DateTime, rhs:Float):Bool;
-	@:op(A <= B) static public function lte(lhs:DateTime, rhs:Float):Bool;
-	@:op(A == B) static public function eq(lhs:DateTime, rhs:Float):Bool;
-	@:op(A >= B) static public function gte(lhs:DateTime, rhs:Float):Bool;
-	@:op(A > B) static public function gt(lhs:DateTime, rhs:Float):Bool;
+	@:op(A < B) static public function lt(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A <= B) static public function lte(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A == B) static public function eq(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A != B) static public function neq(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A >= B) static public function gte(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A > B) static public function gt(lhs:DateTime, rhs:DateTime):Bool;
+
+	@:op(A < B) static public function lt1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A <= B) static public function lte1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A == B) static public function eq1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A != B) static public function neq1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A >= B) static public function gte1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A > B) static public function gt1(lhs:DateTime, rhs:Float):Bool;
+	
+	public inline function new(v: Float) {
+		this = v;
+	}
 	
 	public static function isLeapYear(year: Int): Bool {
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));

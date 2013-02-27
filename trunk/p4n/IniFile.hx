@@ -21,7 +21,8 @@
 package p4n;
 import neko.Lib;
 import p4n.TObject;
-import p4n.Convert;
+import p4n.NekoString;
+import p4n.NekoArray;
 
 private class I {
 	public static function getSections(_i: Object): NekoStringArray { return null; }
