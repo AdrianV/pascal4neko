@@ -33,7 +33,7 @@ typedef DateTimeRec = { > DateRec,
 }
 	
 //using p4n.DateTime;
-class DateTime 
+abstract DateTime(Float) from Float to Float
 {
 	static inline var DateDelta: Int = 693594;
 	static var MD0(default, null) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
@@ -42,18 +42,31 @@ class DateTime
 	static inline var D4: Int = D1 * 4 + 1;
 	static inline var D100: Int = D4 * 25 - 1;
 	static inline var D400: Int = D100 * 4 + 1;
-	static public inline var HOURS: Float = 1 / 24;
-	static public inline var MINUTES: Float = 1 / (24 * 60);
-	static public inline var SECONDS: Float = 1 / (24 * 60 * 60);
-	static public inline var ISOFirstWeekDay: Int = 0; // Montag
-	static public inline var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
+	static public inline var HOURS: DateTime = 1 / 24;
+	static public inline var MINUTES: DateTime = 1 / (24 * 60);
+	static public inline var SECONDS: DateTime = 1 / (24 * 60 * 60);
+	static public var ISOFirstWeekDay: Int = 0; // Montag
+	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
-		
+	@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:Float):DateTime;
+	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Int):DateTime;
+	@:commutative @:op(A * B) static public function mul(lhs:DateTime, rhs:Float):DateTime;
+	@:commutative @:op(A * B) static public function mul1(lhs:DateTime, rhs:Int):DateTime;
+	@:op(A - B) static public function sub1(lhs:DateTime, rhs:Float):DateTime;
+	@:op(A - B) static public function sub2(lhs:DateTime, rhs:DateTime):DateTime;
+	@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
+	@:op(A / B) static public function div1(lhs:DateTime, rhs:Float):Float;
+	@:op(A < B) static public function lt(lhs:DateTime, rhs:Float):Bool;
+	@:op(A <= B) static public function lte(lhs:DateTime, rhs:Float):Bool;
+	@:op(A == B) static public function eq(lhs:DateTime, rhs:Float):Bool;
+	@:op(A >= B) static public function gte(lhs:DateTime, rhs:Float):Bool;
+	@:op(A > B) static public function gt(lhs:DateTime, rhs:Float):Bool;
+	
 	public static function isLeapYear(year: Int): Bool {
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
 	
-	public static function encode(year: Int, month: Int, day: Int): Float {
+	public static function encode(year: Int, month: Int, day: Int): DateTime {
 		var DayTable = if (isLeapYear(year)) MD1 else MD0;
 		  
 		if ((year >= 1) && (year <= 9999) && (month >= 1) && (month <= 12) 
@@ -69,16 +82,16 @@ class DateTime
 			return 0.0;
 	}
 	
-	public static inline function encodeTime(hour: Int, minute: Int, sec: Float): Float {
+	public static inline function encodeTime(hour: Int, minute: Int, sec: Float): DateTime {
 		return ((hour * HOURS) + minute * MINUTES + sec * SECONDS);
 	}
-	public static function encodeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, sec: Float): Float {
+	public static function encodeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, sec: Float): DateTime {
 		return (encode(year, month, day) + (hour * HOURS) + minute * MINUTES + sec * SECONDS);
 	}
 	
-	public static function decode(me: Float): DateRec {
-		if (me == null) return { day:0, month: 0, year: 0 };
-		var T: Int = toInt(me) + DateDelta;
+	public function decode(): DateRec {
+		if (this == null) return { day:0, month: 0, year: 0 };
+		var T: Int = toInt(this) + DateDelta;
 		if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
 		if (T <= 0) {
 			return { day: 0, year: 0, month: 0 };
@@ -122,18 +135,18 @@ class DateTime
 		}
 	}
 		
-	public static inline function year(me: Float): Int {
-		return decode(me).year;
+	public inline function year(): Int {
+		return decode(this).year;
 	}
-	public static inline function month(me: Float): Int {
-		return decode(me).month;
+	public inline function month(): Int {
+		return decode(this).month;
 	}
-	public static inline function day(me: Float): Int {
-		return decode(me).day;
+	public inline function day(): Int {
+		return decode(this).day;
 	}
 	
-	public static function monthDelta(d1: Float, d2: Float): Int {
-		var dd1 = decode(d1);
+	public function monthDelta(d2: DateTime): Int {
+		var dd1 = decode(this);
 		var dd2 = decode(d2);
 		return (dd1.month - dd2.month) + 12 * (dd1.year - dd2.year);
 	}
@@ -141,37 +154,37 @@ class DateTime
 		return if (isLeapYear(Year)) MD1[Month] else MD0[Month];
 	}
 
-	public static function lastDayOfMonth(me: Float): Int {
-		var dt: DateRec = decode(me);
+	public function lastDayOfMonth(): Int {
+		var dt: DateRec = decode(this);
 		return if (isLeapYear(dt.year)) MD1[dt.month] else MD0[dt.month];
 	}
 	
-	public static function dayOfWeek(me: Float): Int {
+	public function dayOfWeek(): Int {
 		// Mo = 0; Sun= 6
-		return (Math.floor(me) +5) % 7;
+		return (Math.floor(this) +5) % 7;
 	}
 	
-	public static function fixDay(me: Float, day: Int): Float {
-		var dt: DateRec = decode(me);
+	public function fixDay(day: Int): DateTime {
+		var dt: DateRec = decode(this);
 		return encode(dt.year, dt.month, day);
 	}
 	
-	public static function ISOWeekNumber(me: Float) {
+	public function ISOWeekNumber() {
 		//var YearOfWeekNumber, WeekDay: Integer): Integer;
-		var WeekDay : Int = ((dayOfWeek(me) - ISOFirstWeekDay + 7) % 7) + 1;
-		var day4: Float = me - WeekDay + 8 - ISOFirstWeekMinDays;
+		var WeekDay : Int = ((dayOfWeek(this) - ISOFirstWeekDay + 7) % 7) + 1;
+		var day4: DateTime = this - WeekDay + 8 - ISOFirstWeekMinDays;
 		var dt: DateRec = decode(day4);
-		return { Week: Math.floor((day4 - encode(dt.year, 1, 1)) / 7) +1, Year: dt.year, WeekDay: WeekDay };
+		return { Week: Math.floor((day4 - encode(dt.year, 1, 1)) / 7.0) +1, Year: dt.year, WeekDay: WeekDay };
 	}
 	
-	public static function weekNumber(me: Float): Int {
-		return ISOWeekNumber(me).Week;
+	public inline function weekNumber(): Int {
+		return ISOWeekNumber(this).Week;
 	}
 
-	public static function decodeDateTime(me: Float): DateTimeRec {
-		var dt: DateRec = decode(me);
+	public function decodeDateTime(): DateTimeRec {
+		var dt: DateRec = decode(this);
 		//trace(dt);
-		var t = Math.min(1 - 0.00005 * SECONDS, timeValue(me) + 0.00005 * SECONDS) * 24;
+		var t = Math.min(1 - 0.00005 * SECONDS, timeValue(this) + 0.00005 * SECONDS) * 24;
 		var h: Int = Math.floor(t);
 		t = (t - h) * 60;
 		var m = Math.floor(t);
@@ -179,15 +192,16 @@ class DateTime
 		return {year: dt.year, month: dt.month, day: dt.day, hour: h, minute: m, sec: MathX.round(t, 3) };
 	}
 	//public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
-	public static inline function toInt(me: Float): Int { return Math.floor(me); }
-	public static inline function timeValue(me: Float): Float { return me - Math.floor(me); }
-	public static function toDate(me: Float): Date { 
+	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	@:to public inline function toInt(): Int { return Math.floor(this); }
+	public inline function timeValue(): Float { return this - Math.floor(this); }
+	@:to public function toDate(): Date { 
 		//trace(me);
-		var dt: DateTimeRec = decodeDateTime(me);
+		var dt: DateTimeRec = decodeDateTime(this);
 		return new Date(dt.year, dt.month -1, dt.day, dt.hour, dt.minute, Math.floor(dt.sec));
 	}
 	
-	public static function EasterSunday(year: Int): Float {
+	public static function EasterSunday(year: Int): DateTime {
 		var a :Int = year % 19;
 		var b : Int = (204-11*a) % 30;
 		if (b == 28 || b == 29) 
@@ -202,18 +216,18 @@ class DateTime
 		return encode(year, month, day);
 	}
 	
-	public static function fromDate(d: Date): Float {
+	@:from public static function fromDate(d: Date): DateTime {
 		//var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);
 		//res.toFloat += d.getTime() / (1000 * 60 * 60 * 24); 
 		return DateTime.encodeDateTime(d.getFullYear(), d.getMonth() +1, d.getDate(), 
       d.getHours(), d.getMinutes(), d.getSeconds());
 	}
 		
-	public static function fromTime(d: Date): Float {
+	public static function fromTime(d: Date): DateTime {
 		return DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds());
 	}
 
-	public static function now(): Float {
+	public static function now(): DateTime {
 		return fromDate(Date.now());
 	}
 }

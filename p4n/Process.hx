@@ -22,20 +22,21 @@ package p4n;
 
 #if neko
 import neko.NativeString;
+import p4n.TObject;
 
 private class I {
-	public static function getState(_p: Void): Int { return null; }
-	public static function setHandler(_p: Void, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
-	public static function startProcess(_p: Void, cmd: String, ?args: Array<String>): Void {}
-	public static function terminate(_p: Void): Void {}
-	public static function write(_p: Void, s: String): Void {}
-	public static function writeln(_p: Void, s: String): Void {}
-	public static function createProcess(): Void {}
+	public static function getState(_p: Object): Int { return null; }
+	public static function setHandler(_p: Object, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
+	public static function startProcess(_p: Object, cmd: String, ?args: Array<String>): Void {}
+	public static function terminate(_p: Object): Void {}
+	public static function write(_p: Object, s: String): Void {}
+	public static function writeln(_p: Object, s: String): Void {}
+	public static function createProcess(): Object { return null; }
 }
 
 class Process {
 
-	private var _p: Void;
+	private var _p: Object;
 	public function new() {
 		_p = I.createProcess();
 	}
