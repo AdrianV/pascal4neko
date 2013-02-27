@@ -3,19 +3,11 @@ package p4n;
 import neko.NativeString;
 import neko.NativeArray;
 
-abstract NekoString(NativeString) from NativeString to NativeString {
-	public inline function new(s: String) {
-		this = NativeString.ofString(s);
-	}
-	@:to public inline function toString(): String { return NativeString.toString(this); }
-	@:from static public inline function fromString(s: String) { return new NekoString(s); }
-}
-
 abstract NekoStringArray(NativeArray<NativeString>) from NativeArray<NativeString> to NativeArray<NativeString> {
 	public inline function new(a: NativeArray<NativeString>) {
 		this = a;
 	}
-	@:to public function toArray(): Array<String> { 
+	/*@:to*/ public function toArray(): Array<String> { 
 		untyped {
 			var a = Array.new1(this, __dollar__asize(this));
 			for( i in 0...a.length )
