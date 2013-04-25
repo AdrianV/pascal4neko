@@ -48,13 +48,14 @@ abstract DateTime(Float) from Float to Float
 	static public var ISOFirstWeekDay: Int = 0; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
-	@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:Float):DateTime;
-	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Int):DateTime;
+	@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
+	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Float):DateTime;
+	@:commutative @:op(A + B) static public function add2(lhs:DateTime, rhs:Int):DateTime;
 	@:commutative @:op(A * B) static public function mul(lhs:DateTime, rhs:Float):DateTime;
 	@:commutative @:op(A * B) static public function mul1(lhs:DateTime, rhs:Int):DateTime;
 	@:op(A - B) static public function sub1(lhs:DateTime, rhs:Float):DateTime;
 	@:op(A - B) static public function sub2(lhs:DateTime, rhs:DateTime):DateTime;
-	@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
+	//@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
 	@:op(A / B) static public function div1(lhs:DateTime, rhs:Float):Float;
 	@:op(A < B) static public function lt(lhs:DateTime, rhs:DateTime):Bool;
 	@:op(A <= B) static public function lte(lhs:DateTime, rhs:DateTime):Bool;

@@ -68,10 +68,21 @@ function ProgramData: string;
 function SplitString(var S: string; const limit: string):string;
 function StartsWith(const sStart, s: string): boolean;
 
+procedure DefaultDebugTrace(const Msg: AnsiString);
 var
-  DoDbgTrace: Boolean = True;
+  HookDebugTrace : procedure(const Msg: AnsiString) = DefaultDebugTrace;
 
 implementation
+
+procedure DefaultDebugTrace(const Msg: AnsiString);
+begin
+{$IFDEF LINUX}
+  writeln(Msg);
+{$ELSE}
+//{$IFDEF MSWINDOWS}
+	OutputDebugStringA(PAnsiChar(Msg));
+{$ENDIF}
+end;
 
 function DSAFromConst(const A: array of string): TDynamicStringArray;
 var
@@ -173,39 +184,26 @@ end;
 
 procedure DbgTrace(const Msg: AnsiString);
 begin
-	if not DoDbgTrace then
-		exit;
-{$IFDEF LINUX}
-{$ELSE}
-//{$IFDEF MSWINDOWS}
-	OutputDebugStringA(PAnsiChar(Msg));
-{$ENDIF}
+  if Assigned(HookDebugTrace) then HookDebugTrace(Msg);
 end;
 
 procedure DbgTrace(const Msg: WideString);
 begin
-	if not DoDbgTrace then
-		exit;
-{$IFDEF LINUX}
-{$ELSE}
-//{$IFDEF MSWINDOWS}
-	OutputDebugStringW(PWideChar(Msg));
-{$ENDIF}
+  if Assigned(HookDebugTrace) then HookDebugTrace(Msg);
 end;
 
 procedure DbgTraceFmt(const Fmt: String; const Args: array of const);
 begin
-	if not DoDbgTrace then
-		exit;
-  DbgTrace(Format(Fmt, Args));
+	if Assigned(HookDebugTrace) then
+    HookDebugTrace(Format(Fmt, Args));
 end;
 
 procedure DbgTraceFmt(const Fmt: WideString; const Args: array of const);
 begin
-	if not DoDbgTrace then
-		exit;
-  DbgTrace(Format(Fmt, Args));
+	if Assigned(HookDebugTrace) then
+    HookDebugTrace(Format(Fmt, Args));
 end;
+
 function EncodeByteArray(const aData: array of byte;
 	const aCodeTable: string): string;
 var
