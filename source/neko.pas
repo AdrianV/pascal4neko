@@ -518,7 +518,8 @@ procedure StreamReader(p: readp; buf: Pointer; size: Integer); cdecl;
 function ValueToString(v: value): string;
 function NekoSaveException(e: Exception): value;
 procedure NekoThrowException(v: value);
-function NekoDLLIsLoaded: Boolean; 
+function NekoDLLIsLoaded: Boolean;
+function valid_value(data: Pointer): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 
 var
   EmbeddedNeko: Pneko_vm;
@@ -540,7 +541,13 @@ type
 var
   HNEKO: HMODULE;
 
-function NekoDLLIsLoaded: Boolean; 
+function valid_value(data: Pointer): value;
+begin
+  if data <> nil then Result:= value(data)
+  else Result:= val_null;
+end;
+
+function NekoDLLIsLoaded: Boolean;
 begin
 	Result:= HNEKO <> 0;
 end;
