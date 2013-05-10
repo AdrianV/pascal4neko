@@ -48,7 +48,7 @@ abstract DateTime(Float) from Float to Float
 	static public var ISOFirstWeekDay: Int = 0; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
-	@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
+	//@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
 	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Float):DateTime;
 	@:commutative @:op(A + B) static public function add2(lhs:DateTime, rhs:Int):DateTime;
 	@:commutative @:op(A * B) static public function mul(lhs:DateTime, rhs:Float):DateTime;
@@ -104,7 +104,7 @@ abstract DateTime(Float) from Float to Float
 	
 	public function decode(): DateRec {
 		if (this == null) return { day:0, month: 0, year: 0 };
-		var T: Int = toInt(this) + DateDelta;
+		var T: Int = toInt() + DateDelta;
 		if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
 		if (T <= 0) {
 			return { day: 0, year: 0, month: 0 };
@@ -149,18 +149,18 @@ abstract DateTime(Float) from Float to Float
 	}
 		
 	public inline function year(): Int {
-		return decode(this).year;
+		return decode().year;
 	}
 	public inline function month(): Int {
-		return decode(this).month;
+		return decode().month;
 	}
 	public inline function day(): Int {
-		return decode(this).day;
+		return decode().day;
 	}
 	
 	public function monthDelta(d2: DateTime): Int {
-		var dd1 = decode(this);
-		var dd2 = decode(d2);
+		var dd1 = decode();
+		var dd2 = d2.decode();
 		return (dd1.month - dd2.month) + 12 * (dd1.year - dd2.year);
 	}
 	public static function lastDayOf(Month: Int, Year: Int): Int {
@@ -168,7 +168,7 @@ abstract DateTime(Float) from Float to Float
 	}
 
 	public function lastDayOfMonth(): Int {
-		var dt: DateRec = decode(this);
+		var dt: DateRec = decode();
 		return if (isLeapYear(dt.year)) MD1[dt.month] else MD0[dt.month];
 	}
 	
@@ -178,26 +178,26 @@ abstract DateTime(Float) from Float to Float
 	}
 	
 	public function fixDay(day: Int): DateTime {
-		var dt: DateRec = decode(this);
+		var dt: DateRec = decode();
 		return encode(dt.year, dt.month, day);
 	}
 	
 	public function ISOWeekNumber() {
 		//var YearOfWeekNumber, WeekDay: Integer): Integer;
-		var WeekDay : Int = ((dayOfWeek(this) - ISOFirstWeekDay + 7) % 7) + 1;
+		var WeekDay : Int = ((dayOfWeek() - ISOFirstWeekDay + 7) % 7) + 1;
 		var day4: DateTime = this - WeekDay + 8 - ISOFirstWeekMinDays;
-		var dt: DateRec = decode(day4);
+		var dt: DateRec = day4.decode();
 		return { Week: Math.floor((day4 - encode(dt.year, 1, 1)) / 7.0) +1, Year: dt.year, WeekDay: WeekDay };
 	}
 	
 	public inline function weekNumber(): Int {
-		return ISOWeekNumber(this).Week;
+		return ISOWeekNumber().Week;
 	}
 
 	public function decodeDateTime(): DateTimeRec {
-		var dt: DateRec = decode(this);
+		var dt: DateRec = decode();
 		//trace(dt);
-		var t = Math.min(1 - 0.00005 * SECONDS, timeValue(this) + 0.00005 * SECONDS) * 24;
+		var t = Math.min(1 - 0.00005 * SECONDS, timeValue() + 0.00005 * SECONDS) * 24;
 		var h: Int = Math.floor(t);
 		t = (t - h) * 60;
 		var m = Math.floor(t);
@@ -210,7 +210,7 @@ abstract DateTime(Float) from Float to Float
 	public inline function timeValue(): Float { return this - Math.floor(this); }
 	@:to public function toDate(): Date { 
 		//trace(me);
-		var dt: DateTimeRec = decodeDateTime(this);
+		var dt: DateTimeRec = decodeDateTime();
 		return new Date(dt.year, dt.month -1, dt.day, dt.hour, dt.minute, Math.floor(dt.sec));
 	}
 	
