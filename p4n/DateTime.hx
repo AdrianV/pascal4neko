@@ -48,14 +48,14 @@ abstract DateTime(Float) from Float to Float
 	static public var ISOFirstWeekDay: Int = 0; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
-	//@:commutative @:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
+	@:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
 	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Float):DateTime;
 	@:commutative @:op(A + B) static public function add2(lhs:DateTime, rhs:Int):DateTime;
 	@:commutative @:op(A * B) static public function mul(lhs:DateTime, rhs:Float):DateTime;
 	@:commutative @:op(A * B) static public function mul1(lhs:DateTime, rhs:Int):DateTime;
 	@:op(A - B) static public function sub1(lhs:DateTime, rhs:Float):DateTime;
 	@:op(A - B) static public function sub2(lhs:DateTime, rhs:DateTime):DateTime;
-	//@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
+	@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
 	@:op(A / B) static public function div1(lhs:DateTime, rhs:Float):Float;
 	@:op(A < B) static public function lt(lhs:DateTime, rhs:DateTime):Bool;
 	@:op(A <= B) static public function lte(lhs:DateTime, rhs:DateTime):Bool;
@@ -240,7 +240,24 @@ abstract DateTime(Float) from Float to Float
 		return DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds());
 	}
 
+	public static function fromDay(d: Date): DateTime {
+		return DateTime.encode(d.getFullYear(), d.getMonth() + 1, d.getDate());
+	}
+
+	public static function date(): DateTime {
+		return fromDate(Date.now()).toInt();
+	}
+
 	public static function now(): DateTime {
 		return fromDate(Date.now());
 	}
 }
+
+#if js
+private class Init {
+	private static function __init__() : Void untyped {
+		$hxExpose(DateTime, "p4n.DateTime");
+		__js__("p4n.DateTime = window.p4n.DateTime");
+	}
+}
+#end

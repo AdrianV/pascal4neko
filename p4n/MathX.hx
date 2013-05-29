@@ -20,7 +20,7 @@
 
 package p4n;
 
-class MathX 
+@:expose class MathX 
 {
 	static public inline function frac(value: Float): Float {
 		return if (value >= 0) value - Math.floor(value) else value - Math.ceil(value);
