@@ -73,7 +73,7 @@ type
   TContext = record
 	  r: THTTPRequest;
 	  main: value;
-	  post_data: value;
+	  //post_data: value;
 	  content_type: value;
 	  headers_sent: Boolean;
     classes: value;
@@ -334,16 +334,65 @@ begin
 end;
 
 function get_post_data(): value; cdecl;
+var
+  c: PContext;
+
+  procedure ReadPostData;
+  var j, l: Integer;
+      b: String;
+  begin
+    //Read in postdata:
+    with c.r.H do begin
+      FPostData := '';
+      l := StrToIntDef (FRequest.Header.Values['Content-Length'], 0);
+      if (l<=0) then begin
+        FMode := cmClose;
+        exit;
+      end;
+      while (length (FPostData) < l) and (FSock.LastError = 0) do
+      begin
+        j := l - length (FPostData);
+        if j>2048 then
+          j := 2048;
+        b := FSock.RecvBufferStr (j, 30000);
+        if b='' then //sorry, taken too long, aborting
+          begin
+            FPostData := '';
+            break;
+          end
+        else
+          FPostData := FPostData + b;
+      end;
+    end;
+  end;
+
 begin
-  Result:= CONTEXT().post_data;
+  c:= CONTEXT();
+  if (c.r.H.FPostData = '') and (c.r.H.FRequest.Header.Values['Content-Length'] <> '') then
+    ReadPostData;
+  Result:= alloc_string(c.r.H.FPostData);
 end;
 
 function parse_multipart_data(onpart, ondata: value): value; cdecl;
 var
   c: PContext;
+  content_type, boundary, data: string;
+  len: Integer;
 begin
   c:= CONTEXT();
   Result:= val_null; //not implemented
+  boundary:= c.r.H.FRequest.Header.Values['Content-Type'];
+  content_type:= SplitString(boundary, ';');
+  if not SameStr(content_type, 'multipart/form-data') then begin
+    DbgTrace(content_type);
+    exit;
+  end;
+	val_check_function(onpart,2);
+	val_check_function(ondata,3);
+  len:= StrToIntDef (c.r.H.FRequest.Header.Values['Content-Length'], 0);
+  if len = 0 then len := 8192;
+  //data:= c.r.H.FSock.RecvBufferStr (len, 30000);
+  //DbgTraceFmt('data: %d', [length(data)]);
 end;
 
 function get_params(): value; cdecl;
@@ -609,7 +658,7 @@ begin
   inc(config.hits);
   ctx.r:= Self;
   //ctx.main:= CacheFind(ctx.r);
-  ctx.post_data:= nil;
+  //ctx.post_data:= nil;
   ctx.headers_sent:= False;
   H.FResponse.MimeType:='text/html';
   ctx.content_type:= alloc_string(H.FResponse.MimeType);
