@@ -26,7 +26,7 @@ package p4n;
 		return if (value >= 0) value - Math.floor(value) else value - Math.ceil(value);
 	}
 
-	static public inline function trunc(value: Float): Float {
+	static public inline function trunc(value: Float): Int {
 		return if (value >= 0) Math.floor(value) else Math.ceil(value);
 	}
 	

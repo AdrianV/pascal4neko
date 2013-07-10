@@ -232,16 +232,16 @@ abstract DateTime(Float) from Float to Float
 	@:from public static function fromDate(d: Date): DateTime {
 		//var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);
 		//res.toFloat += d.getTime() / (1000 * 60 * 60 * 24); 
-		return DateTime.encodeDateTime(d.getFullYear(), d.getMonth() +1, d.getDate(), 
-      d.getHours(), d.getMinutes(), d.getSeconds());
+		return d != null ? DateTime.encodeDateTime(d.getFullYear(), d.getMonth() +1, d.getDate(), 
+      d.getHours(), d.getMinutes(), d.getSeconds()): 0.0;
 	}
 		
 	public static function fromTime(d: Date): DateTime {
-		return DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds());
+		return d != null ? DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds()) : 0.0;
 	}
 
 	public static function fromDay(d: Date): DateTime {
-		return DateTime.encode(d.getFullYear(), d.getMonth() + 1, d.getDate());
+		return d != null ? DateTime.encode(d.getFullYear(), d.getMonth() + 1, d.getDate()) : 0.0;
 	}
 
 	public static function date(): DateTime {
