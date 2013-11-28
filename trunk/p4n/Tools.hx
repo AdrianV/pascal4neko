@@ -72,14 +72,23 @@ class Tools
 		}
 		return o;
 	}
-	public static function exportList<T>(AList: List<T>) 
+	public static function exportList<T>(data: List<T>) : List<T>
 	{
-		
-		if (AList == null) return null;
-		for (x in AList) { 
+		if (data == null) return null;
+		for (x in data) { 
 			x = exportObject(x);
 		}
-		return AList;
+		return data;
+	}
+	
+	public static function exportArray<T>(data: Array<T>) : Array<T>
+	{
+		
+		if (data == null) return null;
+		for (x in data) { 
+			x = exportObject(x);
+		}
+		return data;
 	}
 	
 

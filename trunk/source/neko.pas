@@ -178,12 +178,14 @@ type
 
   val_array = array [0..MaxInt div (sizeof(value)+1)] of value;
   Pval_array = ^val_array;
+  TNekoArray = array of value;
   TArrayInfo = record
     a: Pval_array;
     l: Integer;
     function FromValue(v: value): Boolean;
     function Get(Index: Integer; Def: value): value; inline;
     function SetVal(Index: Integer; val: value): value; inline;
+    function toArray(): TNekoArray; inline;
   end;
   Pobjtable = ^Tobjtable;
 
@@ -323,7 +325,7 @@ type
   TFieldIterProc = procedure ( v: value; f: Tfield; data: Pointer);
   TFieldIterMethod = procedure ( v: value; f: Tfield; data: Pointer) of object;
   TReaderProc = procedure (p: readp; buf: Pointer; size: Integer); cdecl;
-  TNekoArray = array of value;
+
   
 function alloc_bool(v: Boolean): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_best_int(i : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -510,7 +512,7 @@ procedure TObject_free(v: value); cdecl;
 function TObject_NekoLink(this: value; Self: TObject): value;
 function TObject_wrapper(Self: TObject): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function TObject_GC(Self: TObject): value;
-function TObject_(v: value): TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function TObject_(v: value): TObject; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function TObject_Of(v: value): TObject;
 function TObject_Release(v: value): value; cdecl;
 function TObject_Self: TObject; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -1065,7 +1067,8 @@ function TObject_(v: value): TObject;
 begin
   if val_is_kind(v, k_object) or val_is_kind(v, k_objectgc) then
     Result:= TObject(val_data(v))
-  else Result:= TObject(v);
+  else if not val_is_null(v) then Result:= TObject(v)
+  else Result:= nil;
 end;
 
 function TObject_Of(v: value): TObject;
@@ -1281,6 +1284,12 @@ begin
   Result:= val;
   if (Index >= 0) and (Index < l) then
     a^[Index]:= val;
+end;
+
+function TArrayInfo.toArray: TNekoArray;
+begin
+  SetLength(result, l);
+  Move(a^, Result[0], l * SizeOf(value));
 end;
 
 { ENekoException }
