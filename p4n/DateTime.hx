@@ -103,9 +103,12 @@ abstract DateTime(Float) from Float to Float
 	}
 	
 	public function decode(): DateRec {
+		#if neko || js
 		if (this == null) return { day:0, month: 0, year: 0 };
+		#end
+		if (Math.isNaN(this)) return { day:0, month: 0, year: 0 };
 		var T: Int = toInt() + DateDelta;
-		if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
+		//if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
 		if (T <= 0) {
 			return { day: 0, year: 0, month: 0 };
 		} else {
