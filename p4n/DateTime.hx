@@ -33,6 +33,7 @@ typedef DateTimeRec = { > DateRec,
 }
 	
 //using p4n.DateTime;
+#if js @:expose("p4n.DateTime") #end
 abstract DateTime(Float) from Float to Float
 {
 	static inline var DateDelta: Int = 693594;
@@ -103,7 +104,7 @@ abstract DateTime(Float) from Float to Float
 	}
 	
 	public function decode(): DateRec {
-		#if neko || js
+		#if (neko || js)
 		if (this == null) return { day:0, month: 0, year: 0 };
 		#end
 		if (Math.isNaN(this)) return { day:0, month: 0, year: 0 };
@@ -259,8 +260,12 @@ abstract DateTime(Float) from Float to Float
 #if js
 private class Init {
 	private static function __init__() : Void untyped {
-		$hxExpose(DateTime, "p4n.DateTime");
-		__js__("p4n.DateTime = window.p4n.DateTime");
+		function set() {
+			var dummy = DateTime;
+			__js__('p4n.DateTime = dummy');
+			__js__('window.p4n.DateTime = dummy');
+		}();
+		
 	}
 }
 #end
