@@ -903,7 +903,8 @@ end;
 
 function val_int(v: value): Integer;
 begin
-  Result:= (Cardinal(v) shr 1) OR (Cardinal(v) and $80000000);
+  Result:= Integer(Cardinal(v) and not 1) div 2;
+  //Result:= (Cardinal(v) shr 1) OR (Cardinal(v) and $80000000);
 end;
 
 function val_float(v: value): Double;

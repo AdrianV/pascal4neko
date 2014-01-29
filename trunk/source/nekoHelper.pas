@@ -403,7 +403,11 @@ begin
     else begin
       case v^.t and 7 of
         cVAL_NULL: begin
-
+          case v^.t of
+            cVAL_INT32 : begin
+              Result:= val_int32(v);
+            end;
+          end;
         end;
         cVAL_FLOAT: Result:= val_float(v);
         cVAL_BOOL: Result:= v = val_true;
@@ -427,9 +431,6 @@ begin
         	if val_kind(v) = k_int32 then
           	Result:= Integer(val_data(v));
           {$endif}
-        end;
-        cVAL_INT32 : begin
-        	Result:= val_int32(v);
         end;
       end;
     end;
