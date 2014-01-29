@@ -13,8 +13,8 @@ class XObject {
 }
 
 class XComponent extends XObject {
-  private function getOwner(): XComponent {return null;}
-  public var Owner(getOwner, null): XComponent;
+  private function get_Owner(): XComponent {return null;}
+  public var Owner(get, null): XComponent;
   public function new(AOwner: TComponent): Void { super();}
 }
 
@@ -28,11 +28,11 @@ extern class TObject {
 }
 
 class InitObject extends TObject {
-//  private static var doinit = neko.Lib.load('$$', 'TObj1_init', 1);
+//  private static var doinit = neko.Lib.load('$', 'TObj1_init', 1);
 //  private static var doinit2 = {
 //	  untyped {
 //	    var cl = Boot.__classes;
-//	    neko.Lib.load('$$', 'TObj1_init', 1) (cl);
+//	    neko.Lib.load('$', 'TObj1_init', 1) (cl);
 //	    TObject = Reflect.field(cl, 'TObject');
 //	    TComponent = Reflect.field(cl, 'TComponent');
 //	    TForm = Reflect.field(cl, 'TForm');
@@ -46,8 +46,8 @@ extern class TBlahBlah {
 }
 
 extern class TComponent extends TObject {
-  private function getOwner(): TComponent;
-  public var Owner(getOwner, null): TComponent;
+  private function get_Owner(): TComponent;
+  public var Owner(get, null): TComponent;
   public function new(AOwner: TComponent): Void;
 }
 
@@ -97,7 +97,8 @@ class HelloPascal {
     function showMe(v: Dynamic): String;
     function doSomething(a: Int, b: Float): String; 
   } = neko.Lib.load('testneko.dll','_init', 0)();
-  static var test: Dynamic -> Dynamic = neko.Lib.load('$$', 'test', 1);  
+  static var test: Dynamic -> Dynamic = neko.Lib.load('$', 'test', 1);  
+  static var testInt: Dynamic -> Void = neko.Lib.load('$', 'testInt', 1);  
   //static var test2 = test(neko.Boot);
   static function __init__() {
     trace(TObj0);
@@ -112,7 +113,7 @@ class HelloPascal {
 	  }
     if (true)
 	  untyped {
-	    neko.Lib.load('$$', 'TObj1_init', 1) (neko.Boot.__classes);
+	    neko.Lib.load('$', 'TObj1_init', 1) (neko.Boot.__classes);
 	    TObject = neko.Boot.__classes.TObject;
 	    TComponent = neko.Boot.__classes.TComponent;
 	    TForm = neko.Boot.__classes.TForm;
@@ -120,8 +121,15 @@ class HelloPascal {
 	    untyped __dollar__objsetproto(Test2.prototype, TObject.prototype);
     }
     trace(TObj1);    
+	//main();
   }
 	static function main() {
+		trace("main");
+		testInt( -1);
+		testInt( -1.1);
+		testInt( -2);
+		testInt(0x7FFFFFFF);
+		testInt(-0x7FFFFFFF);
 		trace('calling hello() in .dll written in pascal');
 		var o: THello = MyLib.hello();
 		trace(o);
@@ -130,7 +138,7 @@ class HelloPascal {
 		trace(neko.vm.Module.local().globalsCount());
 		trace(untyped Reflect.fields(__dollar__exports.__module));
 		trace(o2);
-		trace(MyLib.showMe({a: 1, b: 2.2, c: [1,2.2, [4,5,6], "Hallo Welt", {e:3, f: 4.5 }], d:{e:3, f: 4.5 }}));
+		//trace(MyLib.showMe({a: 1, b: 2.2, c: [1,2, [4,5,6], "Hallo Welt", {e:3, f: 4.5 }], d:{e:3, f: 4.5 }}));
 		trace(MyLib.showMe(o2));
 		trace(MyLib.doSomething(1, 3.1415));
 		var x = 12, y = 23;

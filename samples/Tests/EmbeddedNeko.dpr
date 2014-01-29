@@ -82,6 +82,19 @@ begin
     Result:= v;
 end;
 
+function testInt(v: value): value; cdecl;
+var
+  vv: Variant;
+begin
+  try
+    vv:= ValueToVariant(v);
+    writeln(vv);
+  except
+    on e: Exception do writeln(e.Message);
+  end;
+  Result:= val_null;
+end;
+
 function TObj1_getData(): value; cdecl;
 var
   Self: TObject;
@@ -197,12 +210,13 @@ end;
 
 procedure RunMe;
 const
-  CExport: array[0..4] of TExportInfo = (
-    (Name: 'test'; Func: @test; Args: 1),
-    (Name: 'TObj1_init'; Func: @TObj1_init; Args: 1),
-    (Name: 'TObj1_new'; Func: @TObj1_new; Args: 1),
-    (Name: 'TObj1_getData'; Func: @TObj1_getData; Args: 0),
-    (Name: 'TObj1_setData'; Func: @TObj1_setData; Args: 1)
+  CExport: array[0..5] of TExportInfo = (
+    (Name: 'test'; Func: @test; Args: 1)
+    ,(Name: 'TObj1_init'; Func: @TObj1_init; Args: 1)
+    ,(Name: 'TObj1_new'; Func: @TObj1_new; Args: 1)
+    ,(Name: 'TObj1_getData'; Func: @TObj1_getData; Args: 0)
+    ,(Name: 'TObj1_setData'; Func: @TObj1_setData; Args: 1)
+    ,(Name: 'testInt'; Func: @testInt; Args: 1)
   );
 var
   m: value;
@@ -212,7 +226,7 @@ begin
     s:= ParamStr(1)
   else
     s:= 'helloPascal.n';
-  AddExportTable(CExport, '$$');
+  AddExportTable(CExport, '$');
   m:= LoadModule(s);
   //writeln(TNekoObj2String.toString(neko.EmbeddedNeko.env));
   exit;
