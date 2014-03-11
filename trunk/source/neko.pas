@@ -355,7 +355,7 @@ procedure val_check_function(f: value; n: Integer); {$IFDEF COMPILER_INLINE} inl
 procedure val_check_object(v: value); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure val_check_string(v: value); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_type(v: value): Tval_type; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function val_int(v: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_int(v: value): Integer;  {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_float(v: value): Double; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_bool(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_int32(v: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -904,7 +904,7 @@ end;
 function val_int(v: value): Integer;
 begin
   Result:= Integer(Cardinal(v) and not 1) div 2;
-  //Result:= (Cardinal(v) shr 1) OR (Cardinal(v) and $80000000);
+  //Result:= Integer((Cardinal(v) shr 1) OR (Cardinal(v) and $80000000));
 end;
 
 function val_float(v: value): Double;
