@@ -1165,7 +1165,7 @@ var
 begin
 	b:= alloc_buffer(nil);
 	st:= neko_exc_stack(vm);
-  for i := 0 to val_array_size(st) -1 do begin
+  for i := 0 to val_array_size(st) -1 do try
 		s := val_array_ptr(st)[i];
 		buffer_append(b,'Called from ');
 		if ( (s = nil) or val_is_null(s) ) then
@@ -1184,6 +1184,7 @@ begin
 		end else
 			val_buffer(b, s);
 		buffer_append(b, #$0d#$0A);
+  except
 	end;
 	if isexc then
     buffer_append(b, 'Uncaught exception - ');
