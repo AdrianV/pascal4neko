@@ -211,7 +211,8 @@ abstract DateTime(Float) from Float to Float
 	//public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
 	@:from public static inline function fromInt(v: Int): DateTime { return v; }
 	@:to public inline function toInt(): Int { return Math.floor(this); }
-	public inline function timeValue(): Float { return this - Math.floor(this); }
+	public function timeValue(): DateTime { return this - Math.floor(this); }
+	public function dayValue(): DateTime return Math.floor(this);
 	@:to public function toDate(): Date { 
 		//trace(me);
 		var dt: DateTimeRec = decodeDateTime();

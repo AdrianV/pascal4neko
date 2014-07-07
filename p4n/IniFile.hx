@@ -23,13 +23,14 @@ import neko.Lib;
 import p4n.TObject;
 import p4n.NekoString;
 import p4n.NekoArray;
+import p4n.DateTime;
 
 private class I {
 	public static function getSections(_i: Object): NekoStringArray { return null; }
 	public static function readString(_i: Object, Section: String, Key: String, Default: String): NekoString { return null; }
 	public static function readInt(_i: Object, Section: String, Key: String, Default: Int): Int { return null; }
 	public static function readBool(_i: Object, Section: String, Key: String, Default: Bool): Bool { return null; }
-	public static function readDateTime(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
+	public static function readDateTime(_i: Object, Section: String, Key: String, Default: DateTime): DateTime { return null; }
 	public static function readFloat(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
 	public static function readSection(_i: Object, Section: String): NekoStringArray { return null; }
 	public static function readSectionKeys(_i: Object, Section: String): NekoStringArray { return null; }
@@ -37,7 +38,7 @@ private class I {
 	public static function writeString(_i: Object, Section: String, Key: String, val: String) { return null; }
 	public static function writeInt(_i: Object, Section: String, Key: String, val: Int) { return null; }
 	public static function writeBool(_i: Object, Section: String, Key: String, val: Bool) { return null; }
-	public static function writeDateTime(_i: Object, Section: String, Key: String, val: Float) { return null; }
+	public static function writeDateTime(_i: Object, Section: String, Key: String, val: DateTime) { return null; }
 	public static function writeFloat(_i: Object, Section: String, Key: String, val: Float) { return null; }
 
 	public static function KeyExists(_i: Object, Section: String, Key: String): Bool { return null; }
@@ -72,7 +73,7 @@ class CustomIniFile extends TObject
 	public function readString(Section: String, Key: String, Default: String): String { return I.readString(_i, Section, Key, Default).toString(); }
 	public function readInt(Section: String, Key: String, Default: Int): Int { return I.readInt(_i, Section, Key, Default); }
 	public function readBool(Section: String, Key: String, Default: Bool): Bool { return I.readBool(_i, Section, Key, Default); }
-	public function readDateTime(Section: String, Key: String, Default: Float): Float { return I.readDateTime(_i, Section, Key, Default); }
+	public function readDateTime(Section: String, Key: String, Default: DateTime): DateTime { return I.readDateTime(_i, Section, Key, Default); }
 	public function readFloat(Section: String, Key: String, Default: Float): Float { return I.readFloat(_i, Section, Key, Default); }
 	public function readSection(Section: String): Array < String > { trace(Section); return I.readSection(_i, Section).toArray(); }
 
@@ -81,7 +82,7 @@ class CustomIniFile extends TObject
 	public function writeString(Section: String, Key: String, val: String) { I.writeString(_i, Section, Key, val); }
 	public function writeInt(Section: String, Key: String, val: Int) { I.writeInt(_i, Section, Key, val); }
 	public function writeBool(Section: String, Key: String, val: Bool) { I.writeBool(_i, Section, Key, val); }
-	public function writeDateTime(Section: String, Key: String, val: Float) { I.writeDateTime(_i, Section, Key, val); }
+	public function writeDateTime(Section: String, Key: String, val: DateTime) { I.writeDateTime(_i, Section, Key, val); }
 	public function writeFloat(Section: String, Key: String, val: Float) { I.writeFloat(_i, Section, Key, val); }
 
 	public function KeyExists(Section: String, Key: String): Bool { return I.KeyExists(_i, Section, Key); }
