@@ -36,6 +36,18 @@ uses Sysutils
 ;
 
 type
+{$IF not defined(IntPtr)}
+{$IF sizeof(Pointer) = 4}
+  IntPtr = LongInt;
+{$ELSE}
+  IntPtr = Int64;
+{$IFEND}
+{$IFEND}
+{$IFDEF FPC}
+  SmallSetInt = Integer;
+{$ELSE}
+  SmallSetInt = Byte;
+{$ENDIF}
   TDynamicByteArray = array of byte;
 	TDynamicStringArray = array of string;
 
