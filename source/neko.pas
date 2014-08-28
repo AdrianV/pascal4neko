@@ -144,7 +144,7 @@ const
   invalid_comparison =	$FE;
 
 type
-  Tint_val = Integer; // !! not 64 bit compatible
+  Tint_val = IntPtr; // !! not 64 bit compatible
   Pint_val = ^Tint_val;
   Tval_type =  Longword;
   Tfield = Longword;
@@ -324,7 +324,7 @@ type
   TFieldIterProc_c_prim = procedure ( v: value; f: Tfield; data: Pointer); cdecl;
   TFieldIterProc = procedure ( v: value; f: Tfield; data: Pointer);
   TFieldIterMethod = procedure ( v: value; f: Tfield; data: Pointer) of object;
-  TReaderProc = procedure (p: readp; buf: Pointer; size: Integer); cdecl;
+  TReaderProc = function (p: readp; buf: Pointer; size: Integer): Integer; cdecl;
 
   
 function alloc_bool(v: Boolean): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -374,6 +374,7 @@ function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue 
 function val_is_HaxeString(v: value): Boolean;
 function val_HaxeString(v: value): string;
 function val_HaxePChar(v: value): PChar;
+function toId(const s: String): TField; inline;
 
 var
   alloc_abstract: function (k: vkind; data: Pointer): value; cdecl;
@@ -986,6 +987,11 @@ begin
     v:= val_field(v, id_string);
   if val_is_string(v) then
     Result:= val_string(v);
+end;
+
+function toId(const s: String): TField; inline;
+begin
+  result:= val_id(PAnsiChar(s));
 end;
 
 function val_call(f: value; const args: array of value; exc: Pvalue): value;

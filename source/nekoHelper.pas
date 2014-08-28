@@ -48,6 +48,11 @@ uses
   neko, p4nHelper;
 
 type
+  TNekoCallback0 = function(): value; cdecl;
+  TNekoCallback1 = function(p1: value): value; cdecl;
+  TNekoCallback2 = function(p1, p2: value): value; cdecl;
+  TNekoCallback3 = function(p1, p2, p3: value): value; cdecl;
+
   TExportInfo = record
     Name: string;
     Func: Pointer;
@@ -63,7 +68,7 @@ function ArrayToArrayOfConst(v: value): TArrayOfConst;
 function ArrayToArrayOfString(v: value): TDynamicStringArray;
 procedure ClearExportTable(const ATable: array of TExportInfo; const LibName: string);
 function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype
-function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0): value;
+function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0; loadmodule: TNekoCallback2 = nil): value;
 function NewNekoInstance(out AInstance:Value): Value;
 function ValueToVariant(v: value): Variant;
 function VariantToValue(v: Variant): value;
@@ -209,22 +214,26 @@ var
   args: array [0..1] of value;
 begin
   this:= vthis;
+  DbgTrace('load module: ' + val_string(mname));
   args[0]:= mname;
   args[1]:= vthis;
-  loader:= val_field(this, val_id('_loader'));
+  loader:= val_field(this, id__loader);
   f:= val_field(loader, val_id('loadmodule'));
   Result:= val_callEx(loader, f, @args[0], 2, @exc);
 end;
 
-function EmbeddedLoader(argv: PPChar; argc: Integer): value;
+function EmbeddedLoader(argv: PPChar; argc: Integer; loadmodule: TNekoCallback2): value;
 var
   ol: value;
 begin
   ol:= neko_default_loader(argv, argc);
   Result:= alloc_object(ol);
-  alloc_field(Result, val_id('_loader'), ol);
+  alloc_field(Result, id__loader, ol);
 	alloc_field(Result, val_id('loadprim'), alloc_function(@myLoadPrim, 2, 'loadprim'));
-	alloc_field(Result, val_id('loadmodule'), alloc_function(@myLoadModule, 2, 'loadmodule'));
+  if @loadmodule = nil then
+  	alloc_field(Result, val_id('loadmodule'), alloc_function(@myLoadModule, 2, 'loadmodule'))
+  else
+    alloc_field(Result, val_id('loadmodule'), alloc_function(@loadmodule, 2, 'loadmodule'))
 end;
 
 function DeclareClass(cl, proto: value; const Name, Super: string; New: Pointer; NParams: Integer; Cons: Pointer = nil): value; //returns prototype

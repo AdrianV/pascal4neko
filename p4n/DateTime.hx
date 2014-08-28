@@ -76,6 +76,13 @@ abstract DateTime(Float) from Float to Float
 		this = v;
 	}
 	
+	public inline function isInitialzed(): Bool {
+		#if (neko || js)
+			return this != null && this != 0.0;
+		#else
+			return this != 0.0;
+		#end
+	}
 	public static function isLeapYear(year: Int): Bool {
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
@@ -262,7 +269,7 @@ abstract DateTime(Float) from Float to Float
 private class Init {
 	private static function __init__() : Void untyped {
 		function set() {
-			var dummy = DateTime;
+			var dummy = $hxClasses[DateTime.__name__.join(".")];
 			__js__('p4n.DateTime = dummy');
 			__js__('window.p4n.DateTime = dummy');
 		}();
