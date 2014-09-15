@@ -76,7 +76,7 @@ abstract DateTime(Float) from Float to Float
 		this = v;
 	}
 	
-	public inline function isInitialzed(): Bool {
+	public inline function isInitialized(): Bool {
 		#if (neko || js)
 			return this != null && this != 0.0;
 		#else
