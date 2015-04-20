@@ -1,11 +1,11 @@
 {
   "name": "pascal4neko",
-  "url" : "http://pascal4neko.googlecode.com/svn/trunk/",
+  "url" : "https://github.com/AdrianV/pascal4neko",
   "license": "MIT",
   "tags": [],
   "description": "",
-  "version": "0.0.1",
-  "releasenote": "Updated from svn.",
+  "version": "1.3.0",
+  "releasenote": "moved to github",
   "contributors": [],
   "dependencies": {}
 }
