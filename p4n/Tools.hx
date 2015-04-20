@@ -105,8 +105,9 @@ class Tools
 				a[i] = toHaxe(a[i]);
 			return a;
 		case 5: return NekoToHaxeObject(v);
-		default:
-			throw "Can't convert "+string(v);
+		default: 
+			return v;
+			//throw "Can't convert "+string(v);
 		}		
 	}
 	

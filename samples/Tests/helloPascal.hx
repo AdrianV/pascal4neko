@@ -1,4 +1,8 @@
 import neko.Boot;
+import p4n.TObject;
+import p4n.vcl.TForm;
+import p4n.vcl.TButton;
+import p4n.vcl.TComponent;
 
 typedef THello = {
   var test: String;
@@ -6,66 +10,7 @@ typedef THello = {
   var FloatVal: Float ;
 }
 
-class XObject {
-  public function ClassName(): String {return 'XObject';}
-  public function new(): Void {}
-  public static function StaticFunction() {return 1;}
-}
 
-class XComponent extends XObject {
-  private function get_Owner(): XComponent {return null;}
-  public var Owner(get, null): XComponent;
-  public function new(AOwner: TComponent): Void { super();}
-}
-
-class XForm extends XComponent {
-  public function ShowModal(): Int {return 124;}
-} 
-
-extern class TObject {
-  public function ClassName(): String;
-  public function new(): Void;
-}
-
-class InitObject extends TObject {
-//  private static var doinit = neko.Lib.load('$', 'TObj1_init', 1);
-//  private static var doinit2 = {
-//	  untyped {
-//	    var cl = Boot.__classes;
-//	    neko.Lib.load('$', 'TObj1_init', 1) (cl);
-//	    TObject = Reflect.field(cl, 'TObject');
-//	    TComponent = Reflect.field(cl, 'TComponent');
-//	    TForm = Reflect.field(cl, 'TForm');
-//    }    
-//    return true;
-//  }
-}
-
-extern class TBlahBlah {
-  public function oops(): Int;  
-}
-
-extern class TComponent extends TObject {
-  private function get_Owner(): TComponent;
-  public var Owner(get, null): TComponent;
-  public function new(AOwner: TComponent): Void;
-}
-
-extern class TForm extends TComponent {
-  public function ShowModal(): Int;
-} 
-
-class Test2 extends TObject {
-  public function new() {
-    super();
-  }
-}
-
-class Xest2 extends XObject {
-  public function new() {
-    super();
-  }
-}
 
 class TObj0 {
   public var Data(dynamic, dynamic): Int;
@@ -82,6 +27,7 @@ class TObj1 {
   public var Data(dynamic, dynamic): Int;
   public function new(AData: Int) { 
     trace('here');
+	trace(this);
     this.Data = AData;
   }
 }
@@ -111,7 +57,7 @@ class HelloPascal {
 	    Test2.__super__ = TObject;
 	    __dollar__objsetproto(Test2.prototype, TObject.prototype);
 	  }
-    if (true)
+    if (false)
 	  untyped {
 	    neko.Lib.load('$', 'TObj1_init', 1) (neko.Boot.__classes);
 	    TObject = neko.Boot.__classes.TObject;
@@ -120,74 +66,72 @@ class HelloPascal {
 	    Test2.__super__ = TObject;
 	    untyped __dollar__objsetproto(Test2.prototype, TObject.prototype);
     }
+	untyped neko.Lib.load('$', 'TObj1_init', 1) (neko.Boot.__classes);
     trace(TObj1);    
 	//main();
   }
 	static function main() {
-		trace("main");
-		testInt( -1);
-		testInt( -1.1);
-		testInt( -2);
-		testInt(0x7FFFFFFF);
-		testInt(-0x7FFFFFFF);
-		trace('calling hello() in .dll written in pascal');
-		var o: THello = MyLib.hello();
-		trace(o);
-		var o2 = MyLib.showMe(o);
-		var i;
-		trace(neko.vm.Module.local().globalsCount());
-		trace(untyped Reflect.fields(__dollar__exports.__module));
-		trace(o2);
-		//trace(MyLib.showMe({a: 1, b: 2.2, c: [1,2, [4,5,6], "Hallo Welt", {e:3, f: 4.5 }], d:{e:3, f: 4.5 }}));
-		trace(MyLib.showMe(o2));
-		trace(MyLib.doSomething(1, 3.1415));
-		var x = 12, y = 23;
-		trace(test(function(){return x + y;}));
-		var ot2 = new XObject();
-		trace(XObject);
-		trace(ot2);
-		untyped trace(Test2.__super__.prototype.__class__ == TObject);
-		untyped trace(Xest2.__super__ == XObject);
-		untyped trace(Xest2.__super__.prototype.__class__ == XObject);
-		untyped trace(Xest2);
-		var ot = new Test2();
-		trace(ot);
-		untyped trace(ot.__class__);
-		untyped trace(__dollar__call(ot.__class__.__super__.prototype.ClassName, ot, __dollar__array()));
-		trace(ot.ClassName());
-		trace(test(new XForm(null)));
-		trace(XForm);
-		trace(TForm);
-		
-    var ob2: TObject = new TObject();
-    trace('Halle');
-    trace(MyLib.showMe(ob2));
-    //trace(ob2.ClassName());
-		
-		
-		//trace(test(Test2));
-		var ob1: TObj1 = new TObj1(123);
-		//trace(123);
-		//trace(ob1);
-		trace(ob1.Data);
-		ob1.Data += 127;
-		trace(ob1.Data);
-		//trace(Reflect);
-		var i: Int;
-		//for (i in 0...100000) {
-		//  ob1 = new TObj1(ob1.Data + i); 
-    //}
-    //trace(ob1.Data);
-    var ob2: TObject = new TObject();
-    trace('Halle');
-    trace(ob2.ClassName());
-    trace(TForm);
-    trace(TObject);
-    var f: TForm = new TForm(null);
-    trace(f.ShowModal());
-    trace(f.ClassName());
-    trace(TObj2);
-    trace(new TObj2(24).Test());
-    trace('The END!');
+		try {
+			trace("main");
+			testInt( -1);
+			testInt( -1.1);
+			testInt( -2);
+			testInt(0x7FFFFFFF);
+			testInt(-0x7FFFFFFF);
+			trace('calling hello() in .dll written in pascal');
+			var o: THello = MyLib.hello();
+			trace(o);
+			var o2 = MyLib.showMe(o);
+			var i;
+			trace(neko.vm.Module.local().globalsCount());
+			trace(untyped Reflect.fields(__dollar__exports.__module));
+			trace(o2);
+			//trace(MyLib.showMe({a: 1, b: 2.2, c: [1,2, [4,5,6], "Hallo Welt", {e:3, f: 4.5 }], d:{e:3, f: 4.5 }}));
+			trace(MyLib.showMe(o2));
+			trace(MyLib.doSomething(1, 3.1415));
+			var x = 12, y = 23;
+			trace(test(function(){return x + y;}));
+			
+		trace('Hallo');
+		var ob2 = new TComponent(null);
+		trace(MyLib.showMe(ob2));
+		//trace(ob2.ClassName());
+			
+			
+			//trace(test(Test2));
+			var ob1: TObj1 = new TObj1(123);
+			//trace(123);
+			//trace(ob1);
+			trace(ob1.Data);
+			ob1.Data += 127;
+			trace(ob1.Data);
+			//trace(Reflect);
+			var i: Int;
+			//for (i in 0...100000) {
+			//  ob1 = new TObj1(ob1.Data + i); 
+		//}
+		//trace(ob1.Data);
+		var ob2: TObject = new TForm(null);
+		trace('Hallo');
+		trace(ob2.className());
+		//trace(TForm);
+		//trace(TObject);
+		var f: TForm = new TForm(null);
+		trace(f.showModal());
+		//trace(f.ClassName());
+		trace(p4n.TObject.ClassName(cast f));
+		var com = new TComponent(f);
+		trace(TObj2);
+		//trace(new TObj2(24).Test());
+		trace("wtf");
+		trace(p4n.vcl.TComponent.createPascalComponent);
+		var xxx = new p4n.vcl.TComponent(null);
+		xxx = new TButton(null);
+		trace(xxx == null);
+		trace(p4n.TObject.ClassName(cast xxx));
+		trace('The END!');
+		} catch (e: Dynamic) {
+			trace(e);
+		}
 	}
 }

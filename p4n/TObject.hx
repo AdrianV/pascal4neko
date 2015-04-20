@@ -20,15 +20,33 @@
 
 package p4n;
 
+#if neko
+
 @:coreType abstract Object { }
 
 class TObject {
 
-  public static dynamic function Release(AObject: Object): Bool {
-    Release = neko.Lib.load('nekoHelper', 'release', 1); 
-    return Release(AObject); 
-  }
+	public static var _classes: Dynamic;
   
+	public static dynamic function Release(AObject: Object): Bool {
+		Release = neko.Lib.load('nekoHelper', 'release', 1); 
+		return Release(AObject); 
+	}
   
-  public function release() {}	
+	public static dynamic function ClassName(self: Object): NekoString {
+		ClassName = neko.Lib.load('nekoHelper', 'classname', 1); 
+		return ClassName(self); 	  
+	}
+  
+	public function className(): String return ClassName(cast this).toString();
+	public function release() { }	
+	
+	static public function __init__() {
+		untyped _classes = neko.Boot.__classes;
+		var _init = neko.Lib.load('nekoHelper', '_init', 1);
+		if (_init != null) _init(TObject);
+	}
+
 }
+
+#end

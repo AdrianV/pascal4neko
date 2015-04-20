@@ -45,7 +45,7 @@ uses
 {$ENDIF}
   Classes,
   SyncObjs,
-  neko, p4nHelper;
+  neko, p4nHelper, lazyBtreeInt;
 
 type
   TNekoCallback0 = function(): value; cdecl;
@@ -60,6 +60,11 @@ type
   end;
   TCustomConvert = function(const s: string): value;
   TArrayOfConst = array of TVarRec;
+  PNekoObjectLink = ^ONekoObjectLink;
+  ONekoObjectLink = object
+    nobj: value;
+    pobj: Pointer;
+  end;
 
 procedure AddExportTable(const ATable: array of TExportInfo; const LibName: string = '');
 function AddToNekoTable(old: value; const data: array of value): value;
@@ -72,13 +77,21 @@ function EmbeddedLoader(argv: PPChar = nil; argc: Integer = 0; loadmodule: TNeko
 function NewNekoInstance(out AInstance:Value): Value;
 function ValueToVariant(v: value): Variant;
 function VariantToValue(v: Variant): value;
+function TObject_NekoLink(this: value; Self: TObject): value;
+function nekoObject_of(Self: TObject): value;
 
 var
   custom_convert1: TCustomConvert = nil;
   custom_convert2: TCustomConvert = nil;
   custom_convert3: TCustomConvert = nil;
 
+threadvar
+  class_TObject_: value;
+  class__classes: value;
+
 implementation
+uses
+  LockFreePrim;
 
 type
   RExportInfo = record
@@ -88,22 +101,27 @@ type
   PExportInfo = ^RExportInfo;
 
 var
-  ExportFunc: TStringList;
-  ExportProtect: TCriticalSection;
+  //ExportFunc: TStringList;
+  //ExportProtect: TCriticalSection;
 	id__loader: Tfield;
 	id_loadprim: Tfield;
+  shared_obj: TSharedObject; //TBTreeInt
+  shared_export: TSharedObject; // TStringList
 
 procedure CleanExport;
 var
   i: Integer;
   p: PExportInfo;
+  exp: TStringList;
 begin
-  if ExportFunc = nil then exit;
-  for i := 0 to ExportFunc.Count - 1 do begin
-    p:= PExportInfo(ExportFunc.Objects[i]);
+  if not shared_export.isAlive then exit;
+  exp:= TStringList(shared_export.lock);
+  for i := 0 to exp.Count - 1 do begin
+    p:= PExportInfo(exp.Objects[i]);
     Dispose(p);
   end;
-  ExportFunc.Clear;
+  exp.Clear;
+  shared_export.unlock;
 end;
 
 function AddToNekoTable(old: value; const data: array of value): value;
@@ -137,24 +155,24 @@ var
   p: PExportInfo;
   s: string;
 begin
-  ExportProtect.Acquire;
+  shared_export.lock;
   try
-    if ExportFunc = nil then ExportFunc:= TStringList.Create;
+    //if ExportFunc = nil then ExportFunc:= TStringList.Create;
     for i := Low(ATable) to High(ATable) do begin
       s:= ATable[i].Name;
       if LibName <> '' then
         s:= LibName + '@' + s;
-      if not ExportFunc.Find(s, x) then begin
+      if not TStringList(shared_export.use).Find(s, x) then begin
         New(p);
-        ExportFunc.InsertObject(x, s, TObject(p));
+        TStringList(shared_export.use).InsertObject(x, s, TObject(p));
       end else begin
-        p:= PExportInfo(ExportFunc.Objects[x]);
+        p:= PExportInfo(TStringList(shared_export.use).Objects[x]);
       end;
       p.CFunc:= ATable[i].Func;
       p.NArgs:= ATable[i].Args;
     end;
   finally
-    ExportProtect.Release;
+    shared_export.unlock;
   end;
 end;
 
@@ -163,19 +181,19 @@ var
   i, x: Integer;
   s: string;
 begin
-  if ExportFunc = nil then exit;
-  ExportProtect.Acquire;
+  if not shared_export.isAlive then exit;
+  shared_export.lock;
   try
     for i := Low(ATable) to High(ATable) do begin
       s:= ATable[i].Name;
       if LibName <> '' then
         s:= LibName + '@' + s;
-      if ExportFunc.Find(s, x) then begin
-        ExportFunc.Delete(x);
+      if TStringList(shared_export.use).Find(s, x) then begin
+        TStringList(shared_export.use).Delete(x);
       end;
     end;
   finally
-    ExportProtect.Release;
+    shared_export.unlock;
   end;
 end;
 
@@ -187,21 +205,21 @@ var
   i: Integer;
 begin
   this:= val_this;
-  if val_is_string(prim) then begin
+  if val_is_string(prim) and shared_export.isAlive then begin
     s:= val_string(prim); //, 0, '@');
-    ExportProtect.Acquire;
+    shared_export.lock;
     try
-      if Assigned(ExportFunc) and ExportFunc.Find(s, i) then begin
+      if TStringList(shared_export.use).Find(s, i) then begin
         SplitString(s, '@');
-        p:= PExportInfo(ExportFunc.Objects[i]);
-        if p.CFunc <> nil then 
+        p:= PExportInfo(TStringList(shared_export.use).Objects[i]);
+        if p.CFunc <> nil then
           Result:= alloc_function(p.CFunc, p.NArgs, PChar(s))
         else
           Result:= val_null;
         exit;
       end;
     finally
-      ExportProtect.Release;
+      shared_export.unlock;
     end;
     loader:= val_field(this, id__loader);
     Result:= val_ocall(loader, id_loadprim, [prim, nargs], @exc);
@@ -404,6 +422,8 @@ function ValueToVariant(v: value): Variant;
 
 var
   t: value;
+  k: vkind;
+  idisp: IDispatch;
 begin
   Result:= Null;
   if not val_is_null(v) then begin
@@ -436,10 +456,16 @@ begin
         cVAL_ARRAY: Result:= ArrayToVariant(v);
         cVAL_FUNCTION: ;
         cVAL_ABSTRACT: begin
+          k:= val_kind(v);
         	{$ifdef neko_very_old}
-        	if val_kind(v) = k_int32 then
+        	if k = k_int32 then
           	Result:= Integer(val_data(v));
           {$endif}
+          if k = k_interface then begin
+            idisp:= IInterface(val_data(v)) as IDispatch;
+            if (idisp <> nil) then Result:= idisp
+            else Result:= IInterface(val_data(v));
+          end;
         end;
       end;
     end;
@@ -452,7 +478,7 @@ var
 begin
   pVar:= FindVarData(v);
   case pVar^.VType of
-    varNull, varUnknown: Result:= val_null;
+    varEmpty, varNull, varUnknown: Result:= val_null;
     varSmallint, varShortInt, varWord:
         Result:= alloc_int(v);
     varInteger: Result:= alloc_best_int(v);
@@ -477,18 +503,99 @@ begin
         end;
       end;
     end;
+    varDispatch: begin
+      Result:= IInterface_GC(IInterface(pVar^.VDispatch));
+    end
     else
       Result:= alloc_string(v);
   end;
 end;
 
+function TObject_ClassName(v: value): value; cdecl;
+var
+  Self: TObject;
+begin
+  Self:= TObject_Of(v);
+  if Self <> nil then
+    Result:= alloc_string(Self.ClassName)
+  else
+    Result:= alloc_string('');
+end;
+
+function TObject__init(self: value): value; cdecl;
+begin
+  class_TObject_ := self;
+  class__classes := val_field(self, val_id('_classes'));
+end;
+
+procedure TObject_NekoLink_free(v: value); cdecl;
+var
+  po: TObject;
+begin
+  if val_is_kind(v, k_objectgc) then begin
+    po:= val_data(v);
+    if shared_obj.isAlive then begin
+      shared_obj.lock;
+      v := TBTreeInt(shared_obj.use).Put(Integer(po), nil);
+      po.Free;
+      shared_obj.unlock;
+    end;
+  end;
+end;
+
+procedure TOwnedComponent_NekoLink_free(v: value); cdecl;
+var
+  po: TObject;
+begin
+  if val_is_kind(v, k_objectgc) then begin
+    po:= val_data(v);
+    if shared_obj.isAlive then begin
+      shared_obj.lock;
+      v := TBTreeInt(shared_obj.use).Put(Integer(po), nil);
+      //po.Free;
+      shared_obj.unlock;
+    end;
+  end;
+end;
+
+function TObject_NekoLink(this: value; Self: TObject): value;
+var
+  vo: value;
+begin
+  Result:= this;
+  vo:= alloc_abstract(k_objectgc, Self);
+  if shared_obj.isAlive then begin
+    shared_obj.lock;
+    TBTreeInt(shared_obj.use).Put(Integer(Self), Result);
+    shared_obj.unlock;
+    if not (Self is TComponent) or (TComponent(Self).Owner = nil) then begin
+      val_gc(vo, TObject_NekoLink_free);
+    end else begin
+      val_gc(vo, TOwnedComponent_NekoLink_free);
+    end;
+  end;
+  alloc_field(Result, id_Self, vo);
+end;
+
+function nekoObject_of(Self: TObject): value;
+begin
+  if shared_obj.isAlive then begin
+    shared_obj.lock;
+    result:= TBTreeInt(shared_obj.use).Get(Integer(Self));
+    shared_obj.unlock;
+  end else Result:= nil;
+end;
+
 procedure InitModule;
 const
-  CExport: array[0..0] of TExportInfo = (
+  CExport: array[0..2] of TExportInfo = (
     (Name: 'nekoHelper@release'; Func: @TObject_release; Args: 1)
+    ,(Name: 'nekoHelper@classname'; Func: @TObject_ClassName; Args: 1)
+    ,(Name: 'nekoHelper@_init'; Func: @TObject__init; Args: 1)
   );
 begin
-  ExportProtect:= TCriticalSection.Create;
+  shared_export.Init(TStringList.Create);
+  shared_obj.Init(TBTreeInt.Create);
   if not NekoDLLIsLoaded then exit;
 	id__loader:= val_id('_loader');
 	id_loadprim:= val_id('loadprim');
@@ -497,10 +604,10 @@ end;
 
 initialization
 	InitModule;
-  
+
 finalization
   CleanExport;
-  FreeAndNil(ExportFunc);
-  FreeAndNil(ExportProtect);
+  shared_export.Free;
+  shared_obj.Free;
 
 end.

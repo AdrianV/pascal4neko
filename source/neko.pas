@@ -313,7 +313,7 @@ type
   Pneko_module = ^Tneko_module;
   mt_local = type Pointer;
   mt_lock = type Pointer;
-  
+
   readp = Pointer;
 
   Tfinalizer = procedure (v: value);cdecl;
@@ -326,7 +326,7 @@ type
   TFieldIterMethod = procedure ( v: value; f: Tfield; data: Pointer) of object;
   TReaderProc = function (p: readp; buf: Pointer; size: Integer): Integer; cdecl;
 
-  
+
 function alloc_bool(v: Boolean): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_best_int(i : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function alloc_int(v : longint) : value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -351,7 +351,7 @@ function val_is_abstract(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$
 function val_is_kind(v: value; k: vkind): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_int32(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure val_check_kind(v: value; k: vkind); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-procedure val_check_function(f: value; n: Integer); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+procedure val_check_function(f: value; n: Integer); //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure val_check_object(v: value); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure val_check_string(v: value); {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_type(v: value): Tval_type; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -476,6 +476,7 @@ var
   id_Self: Tfield;
   id_interface: Tfield;
   id_object: Tfield;
+  id_node: Tfield;
   id_prototype: Tfield;
   id_new: Tfield;
   id__construct__: Tfield;
@@ -492,6 +493,8 @@ var
 
   __kind_k_interface: Tvkind;
   k_interface: vkind = @ __kind_k_interface;
+  __kind_k_node: Tvkind;
+  k_node: vkind = @ __kind_k_node;
   object_is_181: Boolean;
 
 
@@ -510,7 +513,6 @@ function ReportException(vm: Pneko_vm; exc: value; isExc: BOOL ): string;
 procedure SetProto(var v: value; proto: value);
 procedure TPointer_free(v: value); cdecl;
 procedure TObject_free(v: value); cdecl;
-function TObject_NekoLink(this: value; Self: TObject): value;
 function TObject_wrapper(Self: TObject): value; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function TObject_GC(Self: TObject): value;
 function TObject_(v: value): TObject; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -738,6 +740,7 @@ begin
     id_Self:= val_id('__self');
     id_interface:= val_id('__i');
     id_object:= val_id('__o');
+    id_node:= val_id('__node');
     id_prototype:= val_id('prototype');
     id_new:= val_id('new');
     id__construct__:= val_id('__construct__');
@@ -1070,6 +1073,7 @@ begin
   end;
 end;
 
+
 function TObject_(v: value): TObject;
 begin
   if val_is_kind(v, k_object) or val_is_kind(v, k_objectgc) then
@@ -1077,6 +1081,7 @@ begin
   else if not val_is_null(v) then Result:= TObject(v)
   else Result:= nil;
 end;
+
 
 function TObject_Of(v: value): TObject;
 begin
@@ -1096,7 +1101,8 @@ function IInterface_(v: value): IInterface;
 begin
   if val_is_kind(v, k_interface) then
     Result:= IInterface(val_data(v))
-  else Result:= IInterface(v);
+  else if not val_is_null(v) then Result:= IInterface(v)
+  else Result:= nil;
   //if Result <> nil then ?????
   //  Result._AddRef;
 end;
@@ -1108,17 +1114,13 @@ begin
   val_gc(Result, IInterface_free);
 end;
 
+
 function TObject_GC(Self: TObject): value;
 begin
   Result:= alloc_abstract(k_objectgc, Self);
   val_gc(Result, TObject_free);
 end;
 
-function TObject_NekoLink(this: value; Self: TObject): value;
-begin
-  Result:= this;
-  alloc_field(Result, id_Self, TObject_GC(Self));
-end;
 
 function get_array(p: Pvalue; cnt: Integer): TNekoArray; overload;
 begin
@@ -1275,8 +1277,10 @@ begin
     if l = -1 then
       l:= val_array_size(v);
     Result:= True
-  end else
+  end else begin
     Result:= False;
+    a:= nil;
+  end;
 end;
 
 function TArrayInfo.Get(Index: Integer; Def: value): value;

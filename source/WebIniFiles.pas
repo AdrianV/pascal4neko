@@ -3,11 +3,12 @@ unit WebIniFiles;
 interface
 uses
   SysUtils, Classes, IniFiles, Registry, blcksock, synautil, synacode, httpsend,
-  p4nHelper, ProxySettings, //nekoHelper, //Helper,
+  p4nHelper , ProxySettings //, nekoHelper, //Helper,
 {$IFDEF WIN32}
   //HelperWin,
 {$ENDIF}
-  JclSysInfo;
+  //,JclSysInfo;
+  ;
 
 type
   PIniStack = ^TIniStack;
@@ -198,7 +199,8 @@ var
     end else if SameText(s1, 'env') then begin
       p1:= SplitString(s, '|');
       //p2:= SplitStringAt(s, '|');
-      GetEnvironmentVar(p1, Result, True);
+      Result:= GetEnvironmentVariable(p1);
+      //GetEnvironmentVar(p1, Result, True);
       if Result = '' then
         Result:= s;
       //if p2 <> '' then
@@ -640,12 +642,14 @@ begin
       exit;
     DbgTraceFmt('file %s exists, md5 mismatch', [sDown]);
     if not DeleteFile(sDown) then begin
+{$IFNDEF FPC}
 {$IFDEF WIN32}
       DbgTraceFmt('cannot delete file %s reason: %d', [sDown, GetLastError]);
       //DbgTraceFmt('cannot delete file %s reason: %s', [sDown, GetLastErrorString]);
 {$ELSE}
       DbgTraceFmt('cannot delete file %s reason: %d', [sDown, GetLastError]);
-{$ENDIF}
+{$ENDIF WIN32}
+{$ENDIF FPC}
     end;
   end;
   DbgTraceFmt('download from %s to %s', [AddPath(sWeb, sUpd), sDown]);

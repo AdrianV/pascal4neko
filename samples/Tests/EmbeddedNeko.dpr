@@ -9,11 +9,12 @@ uses
   Windows,
   SysUtils,
   neko,
-  Helper,
   uNekoDemo1,
   Classes,
   nekoHelper,
-  Forms;
+  Forms,
+  p4nVCL in '..\..\source\p4nVCL.pas',
+  LockFreePrim in '..\..\..\..\LibUser\LockFreePrim.pas';
 
 type
   TObj1 = class
@@ -111,7 +112,7 @@ var
   ob: TObj1;
 begin
   Result:= val_field(val_this, id_Self);
-  if val_is_kind(Result, k_object) then begin
+  if val_is_kind(Result, k_object) or val_is_kind(Result, k_objectgc) then begin
     ob:= TObj1(val_data(Result));
     ob.FData:= val_int(v);
     Result:= v;

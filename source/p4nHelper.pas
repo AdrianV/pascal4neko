@@ -44,7 +44,7 @@ type
 {$IFEND}
 {$IFEND}
 {$IFDEF FPC}
-  SmallSetInt = Integer;
+  SmallSetInt = Byte;
 {$ELSE}
   SmallSetInt = Byte;
 {$ENDIF}
@@ -54,6 +54,7 @@ type
 function DSAFromConst(const A: array of string): TDynamicStringArray;  
 function _Is_(AObject: TObject; AClass: TClass): Boolean;
 function AddPath(const P1, P2: string): string;
+function AddRelPath(const P1, P2: string): string;
 function ApplicationPath: string;
 
 function CheckClass(AObject: TObject; AClass: TClass; var ResObject{: TObject}): Boolean; {$ifdef COMPILER_INLINE} inline; {$endif}
@@ -163,6 +164,12 @@ begin
   end;
   if (Result <> '') and (Result[Length(Result)] = delim) then
     Delete(Result, Length(Result), 1);
+end;
+
+function AddRelPath(const P1, P2: string): string;
+begin
+  if Pos(':', P2) <= 0 then result:= AddPath(P1,P2)
+  else result:= P2;
 end;
 
 function ApplicationPath: string;
@@ -406,7 +413,6 @@ begin
 		S:= '';
 	end;
 end;
-
 
 
 end.

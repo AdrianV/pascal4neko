@@ -26,10 +26,14 @@ typedef DateRec = {
 	var year: Int;
 }
 
-typedef DateTimeRec = { > DateRec,
+typedef TimeRec = {
 	var hour: Int;
 	var minute: Int;
-	var sec: Float;
+	var sec: Float;	
+}
+
+typedef DateTimeRec = { > DateRec,
+	> TimeRec,
 }
 	
 //using p4n.DateTime;
@@ -215,6 +219,16 @@ abstract DateTime(Float) from Float to Float
 		t = (t - m) * 60;
 		return {year: dt.year, month: dt.month, day: dt.day, hour: h, minute: m, sec: MathX.round(t, 3) };
 	}
+	
+	public function decodeTime(): TimeRec {
+		var t = Math.min(1 - 0.00005 * SECONDS, timeValue() + 0.00005 * SECONDS) * 24;
+		var h: Int = Math.floor(t);
+		t = (t - h) * 60;
+		var m = Math.floor(t);
+		t = (t - m) * 60;
+		return { hour: h, minute: m, sec: MathX.round(t, 3) };		
+	}
+	
 	//public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
 	@:from public static inline function fromInt(v: Int): DateTime { return v; }
 	@:to public inline function toInt(): Int { return Math.floor(this); }
@@ -255,11 +269,17 @@ abstract DateTime(Float) from Float to Float
 	public static function fromDay(d: Date): DateTime {
 		return d != null ? DateTime.encode(d.getFullYear(), d.getMonth() + 1, d.getDate()) : 0.0;
 	}
-
+	
+	/**
+		Returns the actual day (without time).
+	**/
 	public static function date(): DateTime {
 		return fromDate(Date.now()).toInt();
 	}
 
+	/**
+		Returns the actual day and time.
+	**/
 	public static function now(): DateTime {
 		return fromDate(Date.now());
 	}

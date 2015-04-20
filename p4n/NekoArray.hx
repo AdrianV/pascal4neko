@@ -27,7 +27,7 @@ abstract NekoArray<T>(NativeArray<T>) from NativeArray<T> to NativeArray<T> {
 		this = a;
 	}
 	@:to public inline function toArray(): Array<T> { return NativeArray.toArray(this); }
-	@:from static inline public function fromArray(a: Array<T>) { 
+	@:from static inline public function fromArray<T>(a: Array<T>) { 
 		return NativeArray.ofArrayCopy(a); 
 	}
 }
