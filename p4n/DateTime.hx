@@ -114,6 +114,8 @@ abstract DateTime(Float) from Float to Float
 		return (encode(year, month, day) + (hour * HOURS) + minute * MINUTES + sec * SECONDS);
 	}
 	
+	public inline function abs(): DateTime return Math.abs(this);
+	
 	public function decode(): DateRec {
 		#if (neko || js)
 		if (this == null) return { day:0, month: 0, year: 0 };
