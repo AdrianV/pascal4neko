@@ -35,7 +35,7 @@ typedef TimeRec = {
 typedef DateTimeRec = { > DateRec,
 	> TimeRec,
 }
-	
+
 //using p4n.DateTime;
 #if js @:expose("p4n.DateTime") #end
 abstract DateTime(Float) from Float to Float
@@ -232,10 +232,21 @@ abstract DateTime(Float) from Float to Float
 	}
 	
 	//public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
-	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	
+	public inline function format(f: String) return DateTools.format(toDate(), f);
+	
 	@:to public inline function toInt(): Int { return Math.floor(this); }
+	
+	/*
+	 * returns the time fraction of the DateTime value 
+	 */
 	public function timeValue(): DateTime { return this - Math.floor(this); }
+	
+	/*
+	 * returns the DateTime of the day without the time fraction
+	*/
 	public function dayValue(): DateTime return Math.floor(this);
+	
 	@:to public function toDate(): Date { 
 		//trace(me);
 		var dt: DateTimeRec = decodeDateTime();
@@ -264,6 +275,8 @@ abstract DateTime(Float) from Float to Float
       d.getHours(), d.getMinutes(), d.getSeconds()): 0.0;
 	}
 		
+	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	
 	public static function fromTime(d: Date): DateTime {
 		return d != null ? DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds()) : 0.0;
 	}
