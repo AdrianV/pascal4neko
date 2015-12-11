@@ -44,7 +44,7 @@ uses
 	Variants,
 {$ENDIF}
   Classes,
-  SyncObjs,
+  //SyncObjs,
   neko, p4nHelper, lazyBtreeInt;
 
 type
@@ -90,8 +90,6 @@ threadvar
   class__classes: value;
 
 implementation
-uses
-  LockFreePrim;
 
 type
   RExportInfo = record
@@ -102,26 +100,26 @@ type
 
 var
   //ExportFunc: TStringList;
-  //ExportProtect: TCriticalSection;
 	id__loader: Tfield;
 	id_loadprim: Tfield;
-  shared_obj: TSharedObject; //TBTreeInt
-  shared_export: TSharedObject; // TStringList
+  shared_obj: TBTreeInt;
+  shared_export: TStringList;
+  protect_shared_obj: TRTLCriticalSection;
+  protect_shared_export: TRTLCriticalSection;
 
 procedure CleanExport;
 var
   i: Integer;
   p: PExportInfo;
-  exp: TStringList;
 begin
-  if not shared_export.isAlive then exit;
-  exp:= TStringList(shared_export.lock);
-  for i := 0 to exp.Count - 1 do begin
-    p:= PExportInfo(exp.Objects[i]);
+  if shared_export = nil then exit;
+  EnterCriticalSection(protect_shared_export);
+  for i := 0 to shared_export.Count - 1 do begin
+    p:= PExportInfo(shared_export.Objects[i]);
     Dispose(p);
   end;
-  exp.Clear;
-  shared_export.unlock;
+  shared_export.Clear;
+  LeaveCriticalSection(protect_shared_export);
 end;
 
 function AddToNekoTable(old: value; const data: array of value): value;
@@ -155,24 +153,24 @@ var
   p: PExportInfo;
   s: string;
 begin
-  shared_export.lock;
+  EnterCriticalSection(protect_shared_export);
   try
     //if ExportFunc = nil then ExportFunc:= TStringList.Create;
     for i := Low(ATable) to High(ATable) do begin
       s:= ATable[i].Name;
       if LibName <> '' then
         s:= LibName + '@' + s;
-      if not TStringList(shared_export.use).Find(s, x) then begin
+      if not shared_export.Find(s, x) then begin
         New(p);
-        TStringList(shared_export.use).InsertObject(x, s, TObject(p));
+        shared_export.InsertObject(x, s, TObject(p));
       end else begin
-        p:= PExportInfo(TStringList(shared_export.use).Objects[x]);
+        p:= PExportInfo(shared_export.Objects[x]);
       end;
       p.CFunc:= ATable[i].Func;
       p.NArgs:= ATable[i].Args;
     end;
   finally
-    shared_export.unlock;
+    LeaveCriticalSection(protect_shared_export);
   end;
 end;
 
@@ -181,19 +179,19 @@ var
   i, x: Integer;
   s: string;
 begin
-  if not shared_export.isAlive then exit;
-  shared_export.lock;
+  if shared_export = nil then exit;
+  EnterCriticalSection(protect_shared_export);
   try
     for i := Low(ATable) to High(ATable) do begin
       s:= ATable[i].Name;
       if LibName <> '' then
         s:= LibName + '@' + s;
-      if TStringList(shared_export.use).Find(s, x) then begin
-        TStringList(shared_export.use).Delete(x);
+      if shared_export.Find(s, x) then begin
+        shared_export.Delete(x);
       end;
     end;
   finally
-    shared_export.unlock;
+    LeaveCriticalSection(protect_shared_export);
   end;
 end;
 
@@ -205,13 +203,13 @@ var
   i: Integer;
 begin
   this:= val_this;
-  if val_is_string(prim) and shared_export.isAlive then begin
+  if val_is_string(prim) and (shared_export <> nil) then begin
     s:= val_string(prim); //, 0, '@');
-    shared_export.lock;
+    EnterCriticalSection(protect_shared_export);
     try
-      if TStringList(shared_export.use).Find(s, i) then begin
+      if shared_export.Find(s, i) then begin
         SplitString(s, '@');
-        p:= PExportInfo(TStringList(shared_export.use).Objects[i]);
+        p:= PExportInfo(shared_export.Objects[i]);
         if p.CFunc <> nil then
           Result:= alloc_function(p.CFunc, p.NArgs, PChar(s))
         else
@@ -219,7 +217,7 @@ begin
         exit;
       end;
     finally
-      shared_export.unlock;
+      LeaveCriticalSection(protect_shared_export);
     end;
     loader:= val_field(this, id__loader);
     Result:= val_ocall(loader, id_loadprim, [prim, nargs], @exc);
@@ -534,11 +532,11 @@ var
 begin
   if val_is_kind(v, k_objectgc) then begin
     po:= val_data(v);
-    if shared_obj.isAlive then begin
-      shared_obj.lock;
-      v := TBTreeInt(shared_obj.use).Put(Integer(po), nil);
+    if shared_obj <> nil then begin
+      EnterCriticalSection(protect_shared_obj);
+      v := shared_obj.Put(Integer(po), nil);
       po.Free;
-      shared_obj.unlock;
+      LeaveCriticalSection(protect_shared_obj);
     end;
   end;
 end;
@@ -549,11 +547,11 @@ var
 begin
   if val_is_kind(v, k_objectgc) then begin
     po:= val_data(v);
-    if shared_obj.isAlive then begin
-      shared_obj.lock;
-      v := TBTreeInt(shared_obj.use).Put(Integer(po), nil);
+    if shared_obj <> nil then begin
+      EnterCriticalSection(protect_shared_obj);
+      v := shared_obj.Put(Integer(po), nil);
       //po.Free;
-      shared_obj.unlock;
+      LeaveCriticalSection(protect_shared_obj);
     end;
   end;
 end;
@@ -564,10 +562,10 @@ var
 begin
   Result:= this;
   vo:= alloc_abstract(k_objectgc, Self);
-  if shared_obj.isAlive then begin
-    shared_obj.lock;
-    TBTreeInt(shared_obj.use).Put(Integer(Self), Result);
-    shared_obj.unlock;
+  if shared_obj <> nil then begin
+    EnterCriticalSection(protect_shared_obj);
+    shared_obj.Put(Integer(Self), Result);
+    LeaveCriticalSection(protect_shared_obj);
     if not (Self is TComponent) or (TComponent(Self).Owner = nil) then begin
       val_gc(vo, TObject_NekoLink_free);
     end else begin
@@ -579,10 +577,10 @@ end;
 
 function nekoObject_of(Self: TObject): value;
 begin
-  if shared_obj.isAlive then begin
-    shared_obj.lock;
-    result:= TBTreeInt(shared_obj.use).Get(Integer(Self));
-    shared_obj.unlock;
+  if shared_obj <> nil then begin
+    EnterCriticalSection(protect_shared_obj);
+    result:= shared_obj.Get(Integer(Self));
+    LeaveCriticalSection(protect_shared_obj);
   end else Result:= nil;
 end;
 
@@ -594,8 +592,10 @@ const
     ,(Name: 'nekoHelper@_init'; Func: @TObject__init; Args: 1)
   );
 begin
-  shared_export.Init(TStringList.Create);
-  shared_obj.Init(TBTreeInt.Create);
+  InitializeCriticalSection(protect_shared_obj);
+  InitializeCriticalSection(protect_shared_export);
+  shared_export := TStringList.Create;
+  shared_obj:= TBTreeInt.Create;
   if not NekoDLLIsLoaded then exit;
 	id__loader:= val_id('_loader');
 	id_loadprim:= val_id('loadprim');
@@ -607,7 +607,9 @@ initialization
 
 finalization
   CleanExport;
-  shared_export.Free;
-  shared_obj.Free;
+  DeleteCriticalSection(protect_shared_obj);
+  DeleteCriticalSection(protect_shared_export);
+  FreeAndNil(shared_export);
+  FreeAndNil(shared_obj);
 
 end.

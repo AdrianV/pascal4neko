@@ -142,6 +142,7 @@ const
   max_array_size	=	((1 shl 29) - 1);
   max_string_size	=	((1 shl 29) - 1);
   invalid_comparison =	$FE;
+  cTAG_BITS = 4;
 
 type
   Tint_val = IntPtr; // !! not 64 bit compatible
@@ -338,6 +339,7 @@ function val_fun_nargs(f: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$EN
 
 function val_is_null(v : value) : Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_tag(v: value): Tval_type; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_short_tag(v: value): Tval_type; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_int(v : value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_bool(v : value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_number(v : value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -813,6 +815,11 @@ begin
   Result:= v.t;
 end;
 
+function val_short_tag(v: value): Tval_type;
+begin
+  Result:= val_tag(v) and ( (1 shl cTAG_BITS) -1);
+end;
+
 function val_is_int(v : value): Boolean;
 begin
   Result:=((Tint_val(v)) and 1) <> 0;
@@ -951,17 +958,17 @@ end;
 
 function val_strlen(v: value): Integer;
 begin
-  Result:= val_tag(v) shr 3;
+  Result:= val_tag(v) shr cTAG_BITS;
 end;
 
 procedure val_set_length(v: value; len: Integer);
 begin
-  v.t:= (v.t and 7) or (Cardinal(len) shl 3);
+  v.t:= val_short_tag(v) or (Cardinal(len) shl cTAG_BITS);
 end;
 
 function val_array_size(v: value): Integer;
 begin
-  Result:= val_tag(v) shr 3;
+  Result:= val_tag(v) shr cTAG_BITS;
 end;
 
 function val_array_ptr(v: value): Pval_array;
