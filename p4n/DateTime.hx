@@ -36,6 +36,19 @@ typedef DateTimeRec = { > DateRec,
 	> TimeRec,
 }
 
+@:enum abstract WeekDays(Int) from Int to Int {
+	var Mon = 0;
+	var Tue = 1;
+	var Wed = 2;
+	var Thu = 3;
+	var Fri = 4;
+	var Sat = 5;
+	var Sun = 6;
+	inline public function isWeekend(): Bool return this == Sat || this == Sun;
+	@:op(A - B) static public function sub1(lhs:Int, rhs:WeekDays):Int;
+	@:op(A + B) static public function add1(lhs:Int, rhs:WeekDays):Int;
+}
+
 //using p4n.DateTime;
 #if js @:expose("p4n.DateTime") #end
 abstract DateTime(Float) from Float to Float
@@ -50,7 +63,7 @@ abstract DateTime(Float) from Float to Float
 	static public inline var HOURS: Float = 1 / 24;
 	static public inline var MINUTES: Float = 1 / (24 * 60);
 	static public inline var SECONDS: Float = 1 / (24 * 60 * 60);
-	static public var ISOFirstWeekDay: Int = 0; // Montag
+	static public var ISOFirstWeekDay: WeekDays = Mon; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
 	@:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
@@ -189,7 +202,7 @@ abstract DateTime(Float) from Float to Float
 		return if (isLeapYear(dt.year)) MD1[dt.month] else MD0[dt.month];
 	}
 	
-	public function dayOfWeek(): Int {
+	public function dayOfWeek(): WeekDays {
 		// Mo = 0; Sun= 6
 		return (Math.floor(this) +5) % 7;
 	}
@@ -201,14 +214,14 @@ abstract DateTime(Float) from Float to Float
 	
 	public function ISOWeekNumber() {
 		//var YearOfWeekNumber, WeekDay: Integer): Integer;
-		var WeekDay : Int = ((dayOfWeek() - ISOFirstWeekDay + 7) % 7) + 1;
-		var day4: DateTime = this - WeekDay + 8 - ISOFirstWeekMinDays;
+		var weekDay : WeekDays = ((dayOfWeek() - ISOFirstWeekDay + 7) % 7) + 1;
+		var day4: DateTime = this - weekDay + 8 - ISOFirstWeekMinDays;
 		var dt: DateRec = day4.decode();
-		return { Week: Math.floor((day4 - encode(dt.year, 1, 1)) / 7.0) +1, Year: dt.year, WeekDay: WeekDay };
+		return { week: Math.floor((day4 - encode(dt.year, 1, 1)) / 7.0) +1, year: dt.year, weekDay: weekDay };
 	}
 	
 	public inline function weekNumber(): Int {
-		return ISOWeekNumber().Week;
+		return ISOWeekNumber().week;
 	}
 
 	public function decodeDateTime(): DateTimeRec {
@@ -253,6 +266,8 @@ abstract DateTime(Float) from Float to Float
 		return new Date(dt.year, dt.month -1, dt.day, dt.hour, dt.minute, Math.floor(dt.sec));
 	}
 	
+	@:to public function toString(): String return Std.string(this);
+	
 	public static function EasterSunday(year: Int): DateTime {
 		var a :Int = year % 19;
 		var b : Int = (204-11*a) % 30;
@@ -268,14 +283,30 @@ abstract DateTime(Float) from Float to Float
 		return encode(year, month, day);
 	}
 	
+	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	
 	@:from public static function fromDate(d: Date): DateTime {
 		//var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);
 		//res.toFloat += d.getTime() / (1000 * 60 * 60 * 24); 
 		return d != null ? DateTime.encodeDateTime(d.getFullYear(), d.getMonth() +1, d.getDate(), 
       d.getHours(), d.getMinutes(), d.getSeconds()): 0.0;
 	}
-		
-	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	
+	//@:from public static function fromString(v: String): DateTime {	
+	//}
+	// todo
+	
+	@:from public static function fromDynamic(d: Dynamic): DateTime {
+		switch Type.typeof(d) {
+			case TNull : return 0;
+			case TInt : return fromInt(d);
+			case TFloat : return new DateTime(d);
+			case TObject : if ( Std.is(d, Date) ) return fromDate(d);
+			default:
+		}
+		return 0;
+	}
+	
 	
 	public static function fromTime(d: Date): DateTime {
 		return d != null ? DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds()) : 0.0;
