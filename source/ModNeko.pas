@@ -40,7 +40,7 @@ type
   PIPInfo = ^TIPInfo;
   PSettings = ^TSettings;
   PCGIResult = ^TCGIResult;
-  THTTPRequest = class;
+  PHTTPRequest = ^THTTPRequest;
   TCacheMod = class
     main: Pvalue;
     FileName: string;
@@ -54,24 +54,24 @@ type
   private
     var FCache: TThreadList;
     function ClearCache(Index: Integer): Boolean;
-    function FindCache(r: THTTPRequest): TCacheMod;
-    procedure CacheModule(AModule: TCacheMod; r: THTTPRequest; main: value);
+    function FindCache(r: PHTTPRequest): TCacheMod;
+    procedure CacheModule(AModule: TCacheMod; r: PHTTPRequest; main: value);
   protected
     function Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode; override;
   public
   	constructor Create(Server: TvsHTTPServer); override;
     destructor Destroy; override;
   end;
-  THTTPRequest = class
+  THTTPRequest = record
     H: TvsHTTPHandler;
     FileName: string;
     ModNeko: TModeNekoParser;
     FTime: Integer;
-    constructor Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
+    procedure Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
     function DoRequest: Boolean;
   end;
   TContext = record
-	  r: THTTPRequest;
+	  r: PHTTPRequest;
 	  main: value;
 	  //post_data: value;
 	  content_type: value;
@@ -164,10 +164,10 @@ end;
 
 procedure request_print(const data: PChar; size: Integer; param: Pointer); cdecl;
 var
-  c: THTTPRequest;
+  c: PHTTPRequest;
 begin
 	try
-    c := THTTPRequest(param);
+    c := PHTTPRequest(param);
     if c = nil then c := CONTEXT().r;
     if (size = -1) then size := strlen(data);
     c.H.SendData(data, size);
@@ -523,7 +523,7 @@ end;
 
 { TModeNekoParser }
 
-procedure TModeNekoParser.CacheModule(AModule: TCacheMod; r: THTTPRequest;
+procedure TModeNekoParser.CacheModule(AModule: TCacheMod; r: PHTTPRequest;
   main: value);
 var
   i: Integer;
@@ -584,18 +584,17 @@ begin
 end;
 
 function TModeNekoParser.Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode;
+var
+  req: THTTPRequest;
 begin
   //InitModNeko;
   Handler.FMode:= cmDONE;
   //DbgTrace(FileName);
   if FCache <> nil then begin
-    with THTTPRequest.Create(Self, Handler, FileName) do try
-      H.FResponse.ResponseCode := 200;
-      if not DoRequest then
-        H.FResponse.ResponseCode := 503; //Service unavailable
-    finally
-      Free;
-    end;
+    req.Create(Self, Handler, FileName);
+    Handler.FResponse.ResponseCode := 200;
+    if not req.DoRequest then
+      Handler.FResponse.ResponseCode := 503; //Service unavailable
     if (Handler.FResponse.ResponseCode <> 200)
       or (Handler.FRequest.Command = 'POST')
     then
@@ -606,7 +605,7 @@ begin
   Result := cmDONE
 end;
 
-function TModeNekoParser.FindCache(r: THTTPRequest): TCacheMod;
+function TModeNekoParser.FindCache(r: PHTTPRequest): TCacheMod;
 var
   i: Integer;
 begin
@@ -623,6 +622,7 @@ begin
         Delete(i);
         Result.Free;
         gc_major();
+        break;
       end;
 
     end;
@@ -635,7 +635,7 @@ end;
 
 { THTTPRequest }
 
-constructor THTTPRequest.Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
+procedure THTTPRequest.Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
 begin
   ModNeko:= AModNeko;
   H:= AHandler;
@@ -656,7 +656,7 @@ begin
   Result:= True;
   exc:= nil;
   inc(config.hits);
-  ctx.r:= Self;
+  ctx.r:= @Self;
   //ctx.main:= CacheFind(ctx.r);
   //ctx.post_data:= nil;
   ctx.headers_sent:= False;
@@ -666,9 +666,9 @@ begin
   vm:= neko_vm_alloc(nil);
   neko_vm_set_custom(vm, k_mod_neko, @ctx);
   neko_vm_jit(vm, 1);
-  neko_vm_redirect(vm, @request_print, Self); //@ctx);
+  neko_vm_redirect(vm, @request_print, @Self); //@ctx);
   neko_vm_select(vm);
-  module:= ModNeko.FindCache(Self);
+  module:= ModNeko.FindCache(@Self);
   if module <> nil then
     ctx.main:= module.main^
   else
@@ -679,7 +679,7 @@ begin
         old:= ctx.main;
         val_callEx(val_null, old, nil, 0, @exc);
         if (old <> ctx.main) and config.use_cache then begin
-          ModNeko.CacheModule(module, Self, ctx.main);
+          ModNeko.CacheModule(module, @Self, ctx.main);
           module:= nil;
         end;
       end else begin
@@ -687,7 +687,7 @@ begin
         mload:= EmbeddedLoader(@pUri, 1);
         val_ocall(mload, val_id('loadmodule'), [alloc_string(FileName), mload], @exc);
         if (ctx.main <> nil) and config.use_cache then begin
-          ModNeko.CacheModule(module, Self, ctx.main);
+          ModNeko.CacheModule(module, @Self, ctx.main);
           module:= nil;
         end;
       end;

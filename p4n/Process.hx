@@ -25,13 +25,19 @@ import neko.NativeString;
 import p4n.TObject;
 
 private class I {
-	public static function getState(_p: Object): Int { return null; }
+	public static function getState(_p: Object): CPSState { return null; }
 	public static function setHandler(_p: Object, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
 	public static function startProcess(_p: Object, cmd: String, ?args: Array<String>): Void {}
 	public static function terminate(_p: Object): Void {}
 	public static function write(_p: Object, s: String): Void {}
 	public static function writeln(_p: Object, s: String): Void {}
 	public static function createProcess(): Object { return null; }
+}
+
+@:enum abstract CPSState(Int) to Int {
+	var psReady = 0;
+	var psRunning = 1;
+	var psWaiting = 2;
 }
 
 class Process {
@@ -44,7 +50,7 @@ class Process {
 		_p = null;
 	}
 
-	public function getState(): Int { 
+	public function getState(): CPSState { 
 		return I.getState(_p); 
 	}
 

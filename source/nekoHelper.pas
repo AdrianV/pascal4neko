@@ -228,6 +228,7 @@ function myLoadModule(mname, vthis: value): value; cdecl;
 var
   loader, exc, f, this: value;
   args: array [0..1] of value;
+  FPUCW: Word;
 begin
   this:= vthis;
   DbgTrace('load module: ' + val_string(mname));
@@ -235,7 +236,10 @@ begin
   args[1]:= vthis;
   loader:= val_field(this, id__loader);
   f:= val_field(loader, val_id('loadmodule'));
+  FPUCW:= Get8087CW;
+  Set8087CW($27F);
   Result:= val_callEx(loader, f, @args[0], 2, @exc);
+  Set8087CW(FPUCW);
 end;
 
 function EmbeddedLoader(argv: PPChar; argc: Integer; loadmodule: TNekoCallback2): value;

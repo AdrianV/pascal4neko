@@ -296,6 +296,8 @@ abstract DateTime(Float) from Float to Float
 	//}
 	// todo
 	
+	#if false
+	// fromDynamic has bad side effects - better not to use it
 	@:from public static function fromDynamic(d: Dynamic): DateTime {
 		switch Type.typeof(d) {
 			case TNull : return 0;
@@ -306,7 +308,7 @@ abstract DateTime(Float) from Float to Float
 		}
 		return 0;
 	}
-	
+	#end
 	
 	public static function fromTime(d: Date): DateTime {
 		return d != null ? DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds()) : 0.0;
