@@ -36,6 +36,7 @@ typedef DateTimeRec = { > DateRec,
 	> TimeRec,
 }
 
+@:forward
 @:enum abstract WeekDays(Int) from Int to Int {
 	var Mon = 0;
 	var Tue = 1;
@@ -45,8 +46,14 @@ typedef DateTimeRec = { > DateRec,
 	var Sat = 5;
 	var Sun = 6;
 	inline public function isWeekend(): Bool return this == Sat || this == Sun;
-	@:op(A - B) static public function sub1(lhs:Int, rhs:WeekDays):Int;
-	@:op(A + B) static public function add1(lhs:Int, rhs:WeekDays):Int;
+	@:op(A - B) static function sub1(lhs:Int, rhs:WeekDays):Int;
+	@:op(A + B) static function add1(lhs:Int, rhs:WeekDays):Int;
+	@:op(A < B) static function less(lhs:WeekDays, rhs:WeekDays):Bool;
+	@:op(A <= B) static function leq(lhs:WeekDays, rhs:WeekDays):Bool;
+	@:op(A == B) static function eq(lhs:WeekDays, rhs:WeekDays):Bool;
+	@:op(A => B) static function qeq(lhs:WeekDays, rhs:WeekDays):Bool;
+	@:op(A > B) static function greater(lhs:WeekDays, rhs:WeekDays):Bool;
+	@:op(A != B) static function neq(lhs:WeekDays, rhs:WeekDays):Bool;
 }
 
 //using p4n.DateTime;
@@ -66,28 +73,28 @@ abstract DateTime(Float) from Float to Float
 	static public var ISOFirstWeekDay: WeekDays = Mon; // Montag
 	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
 
-	@:op(A + B) static public function add(lhs:DateTime, rhs:DateTime):DateTime;
-	@:commutative @:op(A + B) static public function add1(lhs:DateTime, rhs:Float):DateTime;
-	@:commutative @:op(A + B) static public function add2(lhs:DateTime, rhs:Int):DateTime;
-	@:commutative @:op(A * B) static public function mul(lhs:DateTime, rhs:Float):DateTime;
-	@:commutative @:op(A * B) static public function mul1(lhs:DateTime, rhs:Int):DateTime;
-	@:op(A - B) static public function sub1(lhs:DateTime, rhs:Float):DateTime;
-	@:op(A - B) static public function sub2(lhs:DateTime, rhs:DateTime):DateTime;
-	@:op(A - B) static public function sub3(lhs:Float, rhs:DateTime):DateTime;
-	@:op(A / B) static public function div1(lhs:DateTime, rhs:Float):Float;
-	@:op(A < B) static public function lt(lhs:DateTime, rhs:DateTime):Bool;
-	@:op(A <= B) static public function lte(lhs:DateTime, rhs:DateTime):Bool;
-	@:op(A == B) static public function eq(lhs:DateTime, rhs:DateTime):Bool;
-	@:op(A != B) static public function neq(lhs:DateTime, rhs:DateTime):Bool;
-	@:op(A >= B) static public function gte(lhs:DateTime, rhs:DateTime):Bool;
-	@:op(A > B) static public function gt(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A + B) static function add(lhs:DateTime, rhs:DateTime):DateTime;
+	@:commutative @:op(A + B) static function add1(lhs:DateTime, rhs:Float):DateTime;
+	@:commutative @:op(A + B) static function add2(lhs:DateTime, rhs:Int):DateTime;
+	@:commutative @:op(A * B) static function mul(lhs:DateTime, rhs:Float):DateTime;
+	@:commutative @:op(A * B) static function mul1(lhs:DateTime, rhs:Int):DateTime;
+	@:op(A - B) static function sub1(lhs:DateTime, rhs:Float):DateTime;
+	@:op(A - B) static function sub2(lhs:DateTime, rhs:DateTime):DateTime;
+	@:op(A - B) static function sub3(lhs:Float, rhs:DateTime):DateTime;
+	@:op(A / B) static function div1(lhs:DateTime, rhs:Float):Float;
+	@:op(A < B) static function lt(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A <= B) static function lte(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A == B) static function eq(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A != B) static function neq(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A >= B) static function gte(lhs:DateTime, rhs:DateTime):Bool;
+	@:op(A > B) static function gt(lhs:DateTime, rhs:DateTime):Bool;
 
-	@:op(A < B) static public function lt1(lhs:DateTime, rhs:Float):Bool;
-	@:op(A <= B) static public function lte1(lhs:DateTime, rhs:Float):Bool;
-	@:op(A == B) static public function eq1(lhs:DateTime, rhs:Float):Bool;
-	@:op(A != B) static public function neq1(lhs:DateTime, rhs:Float):Bool;
-	@:op(A >= B) static public function gte1(lhs:DateTime, rhs:Float):Bool;
-	@:op(A > B) static public function gt1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A < B) static function lt1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A <= B) static function lte1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A == B) static function eq1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A != B) static function neq1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A >= B) static function gte1(lhs:DateTime, rhs:Float):Bool;
+	@:op(A > B) static function gt1(lhs:DateTime, rhs:Float):Bool;
 	
 	public inline function new(v: Float) {
 		this = v;
