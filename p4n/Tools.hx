@@ -52,7 +52,7 @@ class Tools
 			var i = 0;
 			var l = __dollar__asize(f);
 			while( i < l ) {
-				var v = __dollar__objget(o, f[i]);
+				var v: Dynamic = __dollar__objget(o, f[i]);
 				var t = __dollar__typeof(v);
 				if (t == __dollar__tstring) {
 					var s = haxe.Utf8.encode(new String(v));
@@ -63,7 +63,7 @@ class Tools
 					if (v.__s != null)
 						__dollar__objset(o, f[i], haxe.Utf8.encode(v));
 				} else if (t== __dollar__tarray) {
-					var a = neko.NativeArray.toArray(o); 
+					var a = neko.NativeArray.toArray(v); 
 					for (i in 0...a.length) exportObject(a[i]); 
 					__dollar__objset(o, f[i], a);
 				}

@@ -290,7 +290,7 @@ abstract DateTime(Float) from Float to Float
 		return encode(year, month, day);
 	}
 	
-	@:from public static inline function fromInt(v: Int): DateTime { return v; }
+	@:from public static inline function fromInt(v: Int): DateTime { return new DateTime(v); }
 	
 	@:from public static function fromDate(d: Date): DateTime {
 		//var res: TDateTime = TDateTime.EncodeDateTime(1970, 1, 1, 1, 0, 0);

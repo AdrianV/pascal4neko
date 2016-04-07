@@ -41,12 +41,13 @@ class TObject {
 	public function className(): String return ClassName(cast this).toString();
 	public function release() { }	
 	
+	#if !macro
 	static public function __init__() {
 		untyped _classes = neko.Boot.__classes;
 		var _init = neko.Lib.load('nekoHelper', '_init', 1);
 		if (_init != null) _init(TObject);
 	}
-
+	#end
 }
 
 #end

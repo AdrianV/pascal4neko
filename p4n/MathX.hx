@@ -30,6 +30,8 @@ package p4n;
 		return if (value >= 0) Math.floor(value) else Math.ceil(value);
 	}
 	
+	inline static var ZeroResolution = 1E-12;
+	
 	static var stellen = [0.00000001,0.0000001,0.000001,0.00001,0.0001,0.001,0.01,0.1,
 		1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0, 100000000.0];
 		
@@ -64,4 +66,9 @@ package p4n;
 		}
 	}
 	
+	static public function same(a: Float, b: Float, ? epsilon: Float = 0): Bool {
+		if ( epsilon == 0 ) 
+			epsilon = Math.max(Math.min(Math.abs(a), Math.abs(b)) * ZeroResolution, ZeroResolution);
+		return ((a > b) ? (a - b) : (b - a)) <= epsilon;
+	}
 }
