@@ -11,7 +11,7 @@ uses
   neko, 
   nekoHelper, 
   p4nHelper,
-  Helper,
+  VHelper,
   p4nInifiles;
 
   function _init_std__1: pointer; cdecl;

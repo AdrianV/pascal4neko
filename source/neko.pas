@@ -318,9 +318,9 @@ type
   readp = Pointer;
 
   Tfinalizer = procedure (v: value);cdecl;
-  Tneko_printer = procedure (const data: PChar; size: Integer; param: Pointer); cdecl;
+  Tneko_printer = procedure (const data: PAnsiChar; size: Integer; param: Pointer); cdecl;
   Tthread_main_func = procedure (param: Pointer); cdecl;
-  Tneko_stat_func = procedure(vm: Pneko_vm; const kind: PChar; start: Integer); cdecl;
+  Tneko_stat_func = procedure(vm: Pneko_vm; const kind: PAnsiChar; start: Integer); cdecl;
 
   TFieldIterProc_c_prim = procedure ( v: value; f: Tfield; data: Pointer); cdecl;
   TFieldIterProc = procedure ( v: value; f: Tfield; data: Pointer);
@@ -363,7 +363,7 @@ function val_bool(v: value): Boolean; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_int32(v: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_number(v: value): Double;
 function val_hdata(v: value): vhash; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
-function val_string(v: value): PChar; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
+function val_string(v: value): PAnsiChar; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_strlen(v: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 procedure val_set_length(v: value; len: Integer);
 function val_array_size(v: value): Integer; {$IFDEF COMPILER_INLINE} inline; {$ENDIF}
@@ -375,17 +375,17 @@ function val_call(f: value; const args: array of value; exc: Pvalue = nil): valu
 function val_ocall(o: value; f: Tfield; const args: array of value; exc: Pvalue = nil): value; //{$IFDEF COMPILER_INLINE} inline; {$ENDIF}
 function val_is_HaxeString(v: value): Boolean;
 function val_HaxeString(v: value): string;
-function val_HaxePChar(v: value): PChar;
-function toId(const s: String): TField; inline;
+function val_HaxePChar(v: value): PAnsiChar;
+function toId(const s: AnsiString): TField; inline;
 
 var
   alloc_abstract: function (k: vkind; data: Pointer): value; cdecl;
-  _alloc_string: function (const v: PChar): value; cdecl;
+  _alloc_string: function (const v: PAnsiChar): value; cdecl;
   alloc_float: function(v: Tfloat): value; cdecl;
   alloc_empty_string: function(size: Cardinal): value; cdecl;
-  copy_string: function(const str: PChar; size: Tint_val): value; cdecl;
+  copy_string: function(const str: PAnsiChar; size: Tint_val): value; cdecl;
   val_this: function: value; cdecl;
-  val_id: function(const name: PChar): Tfield; cdecl;
+  val_id: function(const name: PAnsiChar): Tfield; cdecl;
   val_field: function(o: value; f: Tfield): value; cdecl;
   alloc_object: function(o: value): value; cdecl;
   alloc_field: procedure(o: value; f: Tfield; v: value); cdecl;
@@ -406,10 +406,10 @@ var
   free_root: procedure(r: Pvalue); cdecl;
   alloc: function(nbytes: Cardinal): Pointer; cdecl;
   alloc_private: function(nbytes: Cardinal): Pointer; cdecl;
-  alloc_function: function(c_prim: Pointer; nargs: Cardinal; const name: PChar): value; cdecl;
-  alloc_buffer: function(const init: PChar): Pbuffer; cdecl;
-  buffer_append: procedure(b: Pbuffer; const s: PChar); cdecl;
-  buffer_append_sub: procedure(b: Pbuffer; const s: PChar; len: Tint_val); cdecl;
+  alloc_function: function(c_prim: Pointer; nargs: Cardinal; const name: PAnsiChar): value; cdecl;
+  alloc_buffer: function(const init: PAnsiChar): Pbuffer; cdecl;
+  buffer_append: procedure(b: Pbuffer; const s: PAnsiChar); cdecl;
+  buffer_append_sub: procedure(b: Pbuffer; const s: PAnsiChar; len: Tint_val); cdecl;
   buffer_append_char: procedure(b: Pbuffer; c: Char); cdecl;
   buffer_to_string: function(b: Pbuffer): value; cdecl;
   val_buffer: procedure(b: Pbuffer; v: value); cdecl;
@@ -419,9 +419,9 @@ var
   val_throw: procedure(v: value); cdecl;
   val_rethrow: procedure(v: value); cdecl;
   val_hash: function(v: value): Integer; cdecl;
-  kind_export: procedure(k: vkind; const name: PChar); cdecl;
-  kind_import: function(const name: PChar): vkind; cdecl;
-  _neko_failure: procedure(msg: value; const AFile: PChar; line: Integer); cdecl;
+  kind_export: procedure(k: vkind; const name: PAnsiChar); cdecl;
+  kind_import: function(const name: PAnsiChar): vkind; cdecl;
+  _neko_failure: procedure(msg: value; const AFile: PAnsiChar; line: Integer); cdecl;
 
   neko_global_init: procedure(s: Pointer); cdecl;
   neko_set_stack_base: procedure(s: Pointer); cdecl;
@@ -561,12 +561,12 @@ end;
 
 procedure add_function(c: value; const Name: string; code: Pointer; Args: Integer);
 begin
-  alloc_field(c, val_id(PChar(Name)), alloc_function(code, Args, PChar(Name)));
+  alloc_field(c, val_id(PAnsiChar(Name)), alloc_function(code, Args, PAnsiChar(Name)));
 end;
 
 function alloc_string(const S: string): value;
 begin
-  result:= _alloc_string(PChar(s));
+  result:= _alloc_string(PAnsiChar(s));
 end;
 
 function val_data(v: value): Pointer;
@@ -951,7 +951,7 @@ begin
   Result:= val_data(v);
 end;
 
-function val_string(v: value): PChar;
+function val_string(v: value): PAnsiChar;
 begin
   Result:= @vstring(v).c;
 end;
@@ -990,7 +990,7 @@ begin
     Result:= val_string(v);
 end;
 
-function val_HaxePChar(v: value): PChar;
+function val_HaxePChar(v: value): PAnsiChar;
 begin
   Result:= nil;
   if val_is_object(v) then
@@ -999,7 +999,7 @@ begin
     Result:= val_string(v);
 end;
 
-function toId(const s: String): TField; inline;
+function toId(const s: AnsiString): TField; inline;
 begin
   result:= val_id(PAnsiChar(s));
 end;

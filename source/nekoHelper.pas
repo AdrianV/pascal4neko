@@ -211,7 +211,7 @@ begin
         SplitString(s, '@');
         p:= PExportInfo(shared_export.Objects[i]);
         if p.CFunc <> nil then
-          Result:= alloc_function(p.CFunc, p.NArgs, PChar(s))
+          Result:= alloc_function(p.CFunc, p.NArgs, PAnsiChar(s))
         else
           Result:= val_null;
         exit;
@@ -269,7 +269,7 @@ begin
   alloc_field(Result, id_new, alloc_function(New, NParams, 'new'));
   alloc_field(Result, id__construct__, alloc_function(Cons, NParams, '__construct__'));
   if Super <> '' then begin
-    a:= val_field(cl, val_id(PChar(Super)));
+    a:= val_field(cl, val_id(PAnsiChar(Super)));
     if val_is_object(a) then begin
       alloc_field(Result, id__super__, a);
       SetProto(proto, val_field(a, id_prototype)); //.proto;
@@ -278,7 +278,7 @@ begin
   end;
   alloc_field(proto, id__class__, Result);
   alloc_field(Result, id_prototype, proto);
-  alloc_field(cl, val_id(PChar(Name)), Result);
+  alloc_field(cl, val_id(PAnsiChar(Name)), Result);
 end;
 
 function NewNekoInstance(out AInstance:Value): Value;
