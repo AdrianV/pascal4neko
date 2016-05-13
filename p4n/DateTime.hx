@@ -56,11 +56,14 @@ typedef DateTimeRec = { > DateRec,
 	@:op(A != B) static function neq(lhs:WeekDays, rhs:WeekDays):Bool;
 }
 
-//using p4n.DateTime;
+/**
+	DateTime encodes the Date and Time in a Float, compatible to the Delphi and Freepascal TDateTime type. The Date value is 
+	encoded in the Int part of the Float counted from 12/30/1899. The Time value is encoded in the fractional part of the Float.
+**/
 #if js @:expose("p4n.DateTime") #end
 abstract DateTime(Float) from Float to Float
 {
-	static inline var DateDelta: Int = 693594;
+	static inline var DATE_DELTA: Int = 693594;
 	static var MD0(default, null) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
 	static var MD1(default, null) = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
 	static inline var D1: Int = 365;
@@ -70,8 +73,14 @@ abstract DateTime(Float) from Float to Float
 	static public inline var HOURS: Float = 1 / 24;
 	static public inline var MINUTES: Float = 1 / (24 * 60);
 	static public inline var SECONDS: Float = 1 / (24 * 60 * 60);
-	static public var ISOFirstWeekDay: WeekDays = Mon; // Montag
-	static public var ISOFirstWeekMinDays: Int = 4; // 4. Januar liegt in erster Woche
+	/**
+	 * the default first day in the week is Monday. Adjust to your needs
+	 */
+	static public var ISOFirstWeekDay: WeekDays = Mon; 
+	/**
+	 * by default the first week in the year, is the week which contains the 4.th January
+	 */
+	static public var ISOFirstWeekMinDays: Int = 4; 
 
 	@:op(A + B) static function add(lhs:DateTime, rhs:DateTime):DateTime;
 	@:commutative @:op(A + B) static function add1(lhs:DateTime, rhs:Float):DateTime;
@@ -107,22 +116,23 @@ abstract DateTime(Float) from Float to Float
 			return this != 0.0;
 		#end
 	}
+	
 	public static function isLeapYear(year: Int): Bool {
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
 	
 	public static function encode(year: Int, month: Int, day: Int): DateTime {
-		var DayTable = if (isLeapYear(year)) MD1 else MD0;
+		var dayTable = if (isLeapYear(year)) MD1 else MD0;
 		  
 		if ((year >= 1) && (year <= 9999) && (month >= 1) && (month <= 12) 
-			&& (day >= 1) && (day <= DayTable[month]))
+			&& (day >= 1) && (day <= dayTable[month]))
 		{
 			var I = 1;
 			while (I < month) {
-				day += DayTable[I++];
+				day += dayTable[I++];
 			}
 			I = year - 1;
-			return (I * 365 + Math.floor(I / 4) - Math.floor(I / 100) + Math.floor(I / 400) + day - DateDelta);
+			return (I * 365 + Math.floor(I / 4) - Math.floor(I / 100) + Math.floor(I / 400) + day - DATE_DELTA);
 		} else
 			return 0.0;
 	}
@@ -141,69 +151,99 @@ abstract DateTime(Float) from Float to Float
 		if (this == null) return { day:0, month: 0, year: 0 };
 		#end
 		if (Math.isNaN(this)) return { day:0, month: 0, year: 0 };
-		var T: Int = toInt() + DateDelta;
+		var t: Int = toInt() + DATE_DELTA;
 		//if (Math.isNaN(T)) return { day:0, month: 0, year: 0 };
-		if (T <= 0) {
+		if (t <= 0) {
 			return { day: 0, year: 0, month: 0 };
 		} else {
-			T--;
-			var Y: Int = 1;
-			while (T >= D400) {
-				T -= D400;
-				Y += 400;
+			t--;
+			var y: Int = 1;
+			while (t >= D400) {
+				t -= D400;
+				y += 400;
 			}
-			var I = Math.floor(T / D100);
-			var D: Int = T % D100;
-			if (I == 4) {
-				I--;
-				D += D100;
+			var i = Math.floor(t / D100);
+			var d: Int = t % D100;
+			if (i == 4) {
+				i--;
+				d += D100;
 			}
-			Y += I * 100;
-			I = Math.floor(D / D4);
-			D = D % D4;
-			Y += I * 4;
-			I = Math.floor(D / D1);
-			D = D % D1;
-			if (I == 4) {
-				I--;
-				D += D1;
+			y += i * 100;
+			i = Math.floor(d / D4);
+			d = d % D4;
+			y += i * 4;
+			i = Math.floor(d / D1);
+			d = d % D1;
+			if (i == 4) {
+				i--;
+				d += D1;
 			}
-			Y += I;
-			var DayTable = if (isLeapYear(Y)) MD1 else MD0;
-			var M = 1;
+			y += i;
+			var dayTable = if (isLeapYear(y)) MD1 else MD0;
+			var m = 1;
 			//trace(D);
 			while (true) {
-				I = DayTable[M];
-				if (D < I) break;
+				i = dayTable[m];
+				if (d < i) break;
 				//trace({D:D, I:I, M:M});
-				D -= I;
-				M++;
+				d -= i;
+				m++;
 			}
-			var res: DateRec = { day: D + 1, month: M, year: Y };
+			var res: DateRec = { day: d + 1, month: m, year: y };
 			//trace(res);
 			return res;
 		}
 	}
-		
+	
+	/**
+	 * returns the year value of a DateTime
+	 * e.g. 11/28/2015 -> 2015
+	 **/
 	public inline function year(): Int {
 		return decode().year;
 	}
+	
+	/**
+	 * returns the month value of a DateTime
+	 * e.g. 11/28/2015 -> 11
+	 **/
 	public inline function month(): Int {
 		return decode().month;
 	}
+	
+	/**
+	 * returns the day value of a DateTime
+	 * e.g. 11/28/2015 -> 28
+	 **/
 	public inline function day(): Int {
 		return decode().day;
 	}
 	
+	/**
+	 * calculates how many mont are between to DateTimes
+	 */
 	public function monthDelta(d2: DateTime): Int {
 		var dd1 = decode();
 		var dd2 = d2.decode();
 		return (dd1.month - dd2.month) + 12 * (dd1.year - dd2.year);
 	}
+	
+	/**
+	 * calculates the last day of the DateTime
+	 * DateTime.lastDayOf(2, 2008) -> 29
+	 * @param	Month
+	 * @param	Year
+	 * @return  the last day value of that month
+	 */
 	public static function lastDayOf(Month: Int, Year: Int): Int {
 		return if (isLeapYear(Year)) MD1[Month] else MD0[Month];
 	}
-
+	
+	/**
+	 * calculates the last day of the DateTime
+	 * `DateTime.encode(2008,2,3).lastDayOfMonth()` -> `29`
+	 * @return last day of the DateTime
+	 */
 	public function lastDayOfMonth(): Int {
 		var dt: DateRec = decode();
 		return if (isLeapYear(dt.year)) MD1[dt.month] else MD0[dt.month];
@@ -257,14 +297,14 @@ abstract DateTime(Float) from Float to Float
 	
 	@:to public inline function toInt(): Int { return Math.floor(this); }
 	
-	/*
-	 * returns the time fraction of the DateTime value 
-	 */
+	/**
+	  returns the time fraction of the DateTime value 
+	**/
 	public function timeValue(): DateTime { return this - Math.floor(this); }
 	
-	/*
-	 * returns the DateTime of the day without the time fraction
-	*/
+	/**
+	  returns the DateTime of the day without the time fraction
+	**/
 	public function dayValue(): DateTime return Math.floor(this);
 	
 	@:to public function toDate(): Date { 

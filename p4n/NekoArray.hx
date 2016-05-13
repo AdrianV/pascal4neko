@@ -58,7 +58,7 @@ abstract NekoArray<T>(NativeArray<T>) from NativeArray<T> to NativeArray<T> {
 					}
 					return a;
 				case 5: 
-					trace("is object ", o);
+					//trace("is object ", o);
 					var f = __dollar__objfields(o);
 					var i = 0;
 					var l = __dollar__asize(f);
