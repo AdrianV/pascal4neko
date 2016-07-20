@@ -61,7 +61,7 @@ class CustomIniFile extends TObject
 	public var FileName: String;
 	
 	public override function release () {
-		TObject.Release(_i);
+		_i.free();
 	}
 	
 	public function new(i: Object, AFileName: String) {

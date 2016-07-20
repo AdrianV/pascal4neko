@@ -22,23 +22,26 @@ package p4n;
 
 #if neko
 
-@:coreType abstract Object { }
+@:coreType abstract Object { 
+	static dynamic function _className(self: Object): NekoString {
+		_className = neko.Lib.load('nekoHelper', 'classname', 1); 
+		return _className(self); 	  
+	}
+	static dynamic function _free(self: Object): Bool {
+		_free = neko.Lib.load('nekoHelper', 'release', 1); 
+		return _free(self); 
+	}
+	
+	public inline function free() return _free(this);
+	public var className(get, never): String;
+	private inline function get_className() return _className(this).toString();
+}
+
 
 class TObject {
 
 	public static var _classes: Dynamic;
-  
-	public static dynamic function Release(AObject: Object): Bool {
-		Release = neko.Lib.load('nekoHelper', 'release', 1); 
-		return Release(AObject); 
-	}
-  
-	public static dynamic function ClassName(self: Object): NekoString {
-		ClassName = neko.Lib.load('nekoHelper', 'classname', 1); 
-		return ClassName(self); 	  
-	}
-  
-	public function className(): String return ClassName(cast this).toString();
+      
 	public function release() { }	
 	
 	#if !macro

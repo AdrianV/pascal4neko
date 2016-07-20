@@ -71,4 +71,12 @@ package p4n;
 			epsilon = Math.max(Math.min(Math.abs(a), Math.abs(b)) * ZeroResolution, ZeroResolution);
 		return ((a > b) ? (a - b) : (b - a)) <= epsilon;
 	}
+	
+	static public inline function clamp<T:Float>(x:T, min:T, max:T):T {
+		if (x >= min) {
+			if (x <= max) return x;
+			return max;
+		}
+		return min;
+	}
 }
