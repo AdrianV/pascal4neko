@@ -42,14 +42,14 @@ typedef FormatSettings = {
 }
 
 private class I {
-	public static function format(f: String, arg: Array < Dynamic > ): NekoString { return null; }
-	public static function formatFloat(f: String, x: Float): NekoString { return null; }
-	public static function formatDateTime(f: String, x: DateTime): NekoString { return null; }
-	public static function setFormat(format: Dynamic): Void { return null; }
-	public static function parseDate(s: String): DateTime { return null; }
-	public static function parseDateTime(s: String): DateTime { return null; }
-	public static function parseTime(s: String): DateTime { return null; }
-	public static function parseFloat(s: String): Float { return null; }
+	public static dynamic function format(f: String, arg: Array < Dynamic > ): NekoString { return null; }
+	public static dynamic function formatFloat(f: String, x: Float): NekoString { return null; }
+	public static dynamic function formatDateTime(f: String, x: DateTime): NekoString { return null; }
+	public static dynamic function setFormat(format: Dynamic): Void { return null; }
+	public static dynamic function parseDate(s: String): DateTime { return null; }
+	public static dynamic function parseDateTime(s: String): DateTime { return null; }
+	public static dynamic function parseTime(s: String): DateTime { return null; }
+	public static dynamic function parseFloat(s: String): Float { return null; }
 }
 
 class SysUtils {

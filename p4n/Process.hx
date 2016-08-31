@@ -25,13 +25,13 @@ import neko.NativeString;
 import p4n.TObject;
 
 private class I {
-	public static function getState(_p: Object): CPSState { return null; }
-	public static function setHandler(_p: Object, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
-	public static function startProcess(_p: Object, cmd: String, ?args: Array<String>): Void {}
-	public static function terminate(_p: Object): Void {}
-	public static function write(_p: Object, s: String): Void {}
-	public static function writeln(_p: Object, s: String): Void {}
-	public static function createProcess(): Object { return null; }
+	public static dynamic function getState(_p: Object): CPSState { return null; }
+	public static dynamic function setHandler(_p: Object, onRead: NativeString->Bool->Void, onTerminate:Int->Void, onError: NativeString->Bool->Void): Void {}
+	public static dynamic function startProcess(_p: Object, cmd: String, ?args: Array<String>): Void {}
+	public static dynamic function terminate(_p: Object): Void {}
+	public static dynamic function write(_p: Object, s: String): Void {}
+	public static dynamic function writeln(_p: Object, s: String): Void {}
+	public static dynamic function createProcess(): Object { return null; }
 }
 
 @:enum abstract CPSState(Int) to Int {

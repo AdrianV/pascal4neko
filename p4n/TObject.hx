@@ -45,10 +45,23 @@ class TObject {
 	public function release() { }	
 	
 	#if !macro
+	
+	static var _init : Dynamic->Void;
+	
+	static public function boot() {
+		if (_init == null) {
+			_init = neko.Lib.load('nekoHelper', '_init', 1);
+			if (_init != null) _init(TObject);
+		}
+	}
+	
 	static public function __init__() {
 		untyped _classes = neko.Boot.__classes;
-		var _init = neko.Lib.load('nekoHelper', '_init', 1);
-		if (_init != null) _init(TObject);
+		try {
+			boot();
+		} catch (e: Dynamic) {
+			trace(e);
+		}
 	}
 	#end
 }

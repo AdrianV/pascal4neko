@@ -26,32 +26,32 @@ import p4n.NekoArray;
 import p4n.DateTime;
 
 private class I {
-	public static function getSections(_i: Object): NekoStringArray { return null; }
-	public static function readString(_i: Object, Section: String, Key: String, Default: String): NekoString { return null; }
-	public static function readInt(_i: Object, Section: String, Key: String, Default: Int): Int { return null; }
-	public static function readBool(_i: Object, Section: String, Key: String, Default: Bool): Bool { return null; }
-	public static function readDateTime(_i: Object, Section: String, Key: String, Default: DateTime): DateTime { return null; }
-	public static function readFloat(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
-	public static function readSection(_i: Object, Section: String): NekoStringArray { return null; }
-	public static function readSectionKeys(_i: Object, Section: String): NekoStringArray { return null; }
+	public static dynamic function getSections(_i: Object): NekoStringArray { return null; }
+	public static dynamic function readString(_i: Object, Section: String, Key: String, Default: String): NekoString { return null; }
+	public static dynamic function readInt(_i: Object, Section: String, Key: String, Default: Int): Int { return null; }
+	public static dynamic function readBool(_i: Object, Section: String, Key: String, Default: Bool): Bool { return null; }
+	public static dynamic function readDateTime(_i: Object, Section: String, Key: String, Default: DateTime): DateTime { return null; }
+	public static dynamic function readFloat(_i: Object, Section: String, Key: String, Default: Float): Float { return null; }
+	public static dynamic function readSection(_i: Object, Section: String): NekoStringArray { return null; }
+	public static dynamic function readSectionKeys(_i: Object, Section: String): NekoStringArray { return null; }
 
-	public static function writeString(_i: Object, Section: String, Key: String, val: String) { return null; }
-	public static function writeInt(_i: Object, Section: String, Key: String, val: Int) { return null; }
-	public static function writeBool(_i: Object, Section: String, Key: String, val: Bool) { return null; }
-	public static function writeDateTime(_i: Object, Section: String, Key: String, val: DateTime) { return null; }
-	public static function writeFloat(_i: Object, Section: String, Key: String, val: Float) { return null; }
+	public static dynamic function writeString(_i: Object, Section: String, Key: String, val: String) { return null; }
+	public static dynamic function writeInt(_i: Object, Section: String, Key: String, val: Int) { return null; }
+	public static dynamic function writeBool(_i: Object, Section: String, Key: String, val: Bool) { return null; }
+	public static dynamic function writeDateTime(_i: Object, Section: String, Key: String, val: DateTime) { return null; }
+	public static dynamic function writeFloat(_i: Object, Section: String, Key: String, val: Float) { return null; }
 
-	public static function KeyExists(_i: Object, Section: String, Key: String): Bool { return null; }
-	public static function SectionExists(_i: Object, Section: String): Bool { return null; }
-	public static function eraseKey(_i: Object, Section: String, Key: String) { return null; }
-	public static function eraseSection(_i: Object, Section: String) { return null; }
+	public static dynamic function KeyExists(_i: Object, Section: String, Key: String): Bool { return null; }
+	public static dynamic function SectionExists(_i: Object, Section: String): Bool { return null; }
+	public static dynamic function eraseKey(_i: Object, Section: String, Key: String) { return null; }
+	public static dynamic function eraseSection(_i: Object, Section: String) { return null; }
 	
-	public static function updateFile(_i: Object) { return null; }
+	public static dynamic function updateFile(_i: Object) { return null; }
 	
-	public static function createIniFile(FileName: String): Object { return null; }
-	public static function createMemIniFile(FileName: String): Object { return null; }
-	public static function createRegIniFile(FileName: String): Object { return null; }
-	public static function createWebIniFile(FileName: String): Object { return null; }
+	public static dynamic function createIniFile(FileName: String): Object { return null; }
+	public static dynamic function createMemIniFile(FileName: String): Object { return null; }
+	public static dynamic function createRegIniFile(FileName: String): Object { return null; }
+	public static dynamic function createWebIniFile(FileName: String): Object { return null; }
 
 }
 
@@ -121,7 +121,7 @@ class IniFile extends CustomIniFile
 		super(I.createIniFile(AFileName), AFileName);
 	}
 	
-	
+	#if ! macro
 	static public function __init__() {
 		var call = null;
 		try {
@@ -131,6 +131,8 @@ class IniFile extends CustomIniFile
 			call = neko.Lib.load('p4n_inifiles.dll', '_init', 1);
 		}
 		if (call != null) call(I);
+		TObject.boot();
 	}
+	#end
 	
 }
