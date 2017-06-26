@@ -75,6 +75,7 @@ type
     function Expand(const s: string): string;
     function ReadString(const Section, Ident, Default: string): string; override;
     procedure ReadExpandedSectionValues(const Section: string; Strings: TStrings); 
+    procedure WriteSectionValues(const Section: string; Strings: TStrings); 
   end;
   TIniStack = record
     name: string;
@@ -419,6 +420,36 @@ begin
   inherited Rename(FileName, False);
   if Reload then
     LoadValues;
+end;
+
+procedure TWebIniFile.WriteSectionValues(const Section: string;
+  Strings: TStrings);
+var
+  I: Integer;
+  Sto: TStrings;
+  All: TStringList;
+begin
+  All:= TStringList.Create;
+  All.BeginUpdate;
+  try
+    All.CaseSensitive:= False;
+    GetStrings(All);
+    I := All.IndexOf('[' + Section + ']');
+    if I >= 0 then begin
+      All.Delete(I);
+      while (I < All.Count)
+        and ( (All[I] = '') or (All[I][1] <> '['))
+      do
+        All.Delete(I);
+    end;
+    All.Add('[' + Section + ']');
+    for I := 0 to Strings.Count - 1 do
+      All.Add(Strings[I]);
+    SetStrings(All);
+  finally
+    All.EndUpdate;
+    All.Free;
+  end;
 end;
 
 { TLoadStream }
