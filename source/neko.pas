@@ -638,6 +638,7 @@ procedure LoadNeko;
 begin
   //writeln('LoadNeko', Get8087CW);
   if HNEKO <> 0 then exit;
+  DbgTrace('load neko dll');
   HNEKO:= LoadLibrary(neko_library);
   if HNEKO <> 0 then try
     alloc_abstract:= GetProcAddress(HNEKO, 'neko_alloc_abstract');
@@ -1319,7 +1320,6 @@ begin
 end;
 
 initialization
-	//Application.MessageBox('Blah', 'Blah');
   LoadNeko;
   //assert(val_int(alloc_int(-1)) = -1);
   //assert(val_int(alloc_int(-MaxInt div 2)) = -MaxInt div 2);
