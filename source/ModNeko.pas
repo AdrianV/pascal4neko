@@ -47,15 +47,17 @@ type
     Hits: Integer;
     Time: Integer;
     Lock: TCriticalSection;
-    constructor Create(AMain: value; AFileName: string; ATime: Integer);
+    Hash: Integer;
+    constructor Create(AMain: value; r: PHTTPRequest);
     destructor Destroy; override;
+    procedure Cache(AMain: value; r: PHTTPRequest);
+    function isCached(r: PHTTPRequest): Boolean;
   end;
   TModeNekoParser = class(TPreParser)
   private
     var FCache: TThreadList;
     function ClearCache(Index: Integer): Boolean;
     function FindCache(r: PHTTPRequest): TCacheMod;
-    procedure CacheModule(AModule: TCacheMod; r: PHTTPRequest; main: value);
   protected
     function Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode; override;
   public
@@ -67,6 +69,7 @@ type
     FileName: string;
     ModNeko: TModeNekoParser;
     FTime: Integer;
+    Hash: Integer;
     procedure Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
     function DoRequest: Boolean;
   end;
@@ -107,13 +110,36 @@ type
   end;
 
 var
-  //cache_root: mt_local = nil;
   config: RConfig = (hits: 0; use_stats: False; use_cache: True;
     use_prim_stats: False; gc_period: 10);
+
+const
+  deltaA = Ord('a') - Ord('A');
+  trace_module_loading = false;
+
+
+function hashString(const s: string; CaseSensitive: Boolean): Integer; inline;
+var
+  i, v: Integer;
+begin
+  result:= 0;
+  for i := 1 to length(s) do begin
+    v:= Ord(s[i]);
+    if CaseSensitive or (v < Ord('A')) or (v > Ord('Z')) then
+      Result:= (223* result) + v
+    else
+      Result:= (223* result) + v + deltaA;
+  end;
+end;
 
 function CONTEXT: PContext; inline;
 begin
 	Result:= neko_vm_custom(neko_vm_current(),k_mod_neko);
+end;
+
+function TCacheMod.isCached(r: PHTTPRequest): Boolean;
+begin
+  Result:= (main^ <> nil) and (time = r.FTime);
 end;
 
 procedure gc_major();
@@ -523,38 +549,6 @@ end;
 
 { TModeNekoParser }
 
-procedure TModeNekoParser.CacheModule(AModule: TCacheMod; r: PHTTPRequest;
-  main: value);
-var
-  i: Integer;
-begin
-  with FCache.LockList do try
-    if AModule <> nil then
-      AModule.Lock.Release
-    else begin
-      for i := 0 to Count - 1 do
-        if TCacheMod(Items[i]).FileName = r.FileName then begin
-          AModule:= TCacheMod(Items[i]);
-          break;
-        end;
-    end;
-    if (AModule <> nil) then begin
-      //AModule.Lock.Release;
-      if main = nil then begin
-        Remove(AModule);
-        AModule.Free;
-        gc_major();
-      end else begin
-        AModule.main^:= main;
-      end;
-    end else begin
-      AModule:= TCacheMod.Create(main, r.FileName, r.FTime);
-      Add(AModule);
-    end;
-  finally
-    FCache.UnlockList;
-  end;
-end;
 
 function TModeNekoParser.ClearCache(Index: Integer): Boolean;
 begin
@@ -607,31 +601,32 @@ end;
 
 function TModeNekoParser.FindCache(r: PHTTPRequest): TCacheMod;
 var
-  i: Integer;
+  lockList: TList;
+  i, h: Integer;
+  cur: TCacheMod;
 begin
-  with FCache.LockList do try
-    for i := 0 to Count - 1 do begin
-      Result:= TCacheMod(Items[i]);
-      if Result.FileName = r.FileName then begin
-        if config.use_cache and (Result.Time = r.FTime) then begin
-          Result.Lock.Enter;
-          exit;
-        end;
-        Result.Lock.Enter;
-        Result.Lock.Leave;
-        Delete(i);
-        Result.Free;
-        gc_major();
+  h:= r.Hash;
+  Result:= nil;
+  lockList:= FCache.LockList;
+  try
+    for i := 0 to lockList.Count - 1 do begin
+      cur:= TCacheMod(lockList.Items[i]);
+      if (h = cur.Hash) and SameFileName(cur.FileName, r.FileName) then begin
+        Result:= cur;
         break;
       end;
-
     end;
-
+    if Result = nil then begin
+      if trace_module_loading then DbgTraceFmt('module %s not found in cache hash: %d', [r.FileName, h]);
+      Result:= TCacheMod.Create(nil, r);
+      lockList.Add(Result);
+    end;
   finally
+    Result.Lock.Enter;
     FCache.UnlockList;
   end;
-  Result:= nil;
 end;
+
 
 { THTTPRequest }
 
@@ -641,6 +636,7 @@ begin
   H:= AHandler;
   FileName:= AFileName;
   FTime:= FileAge(AFileName);
+  Hash:= hashString(AFileName, False);
 end;
 
 function THTTPRequest.DoRequest: Boolean;
@@ -651,6 +647,8 @@ var
   exc, old, mload: value;
   pUri: PChar;
   module: TCacheMod;
+
+
 begin
   //H.Log('neko request start');
   Result:= True;
@@ -668,54 +666,80 @@ begin
   neko_vm_jit(vm, 1);
   neko_vm_redirect(vm, @request_print, @Self); //@ctx);
   neko_vm_select(vm);
+  if true then DbgTraceFmt('running module %s caching is %d', [FileName, ord(config.use_cache)]);
   module:= ModNeko.FindCache(@Self);
-  if module <> nil then
-    ctx.main:= module.main^
-  else
-    ctx.main:= nil;
+  //module.Lock.Enter;
   try
-    try
-      if ctx.main <> nil then begin
-        old:= ctx.main;
-        val_callEx(val_null, old, nil, 0, @exc);
-        if (old <> ctx.main) and config.use_cache then begin
-          ModNeko.CacheModule(module, @Self, ctx.main);
-          module:= nil;
+    if module.isCached(@Self)
+    then begin
+      if trace_module_loading then DbgTraceFmt('module %s is cached', [FileName]);
+      ctx.main:= module.main^;
+      old:= ctx.main;
+      val_callEx(val_null, old, nil, 0, @exc);
+      if config.use_cache then begin
+        if (old <> ctx.main) then begin
+          module.Cache(ctx.main, @Self);
         end;
       end else begin
-        pUri:= PChar(H.FRequest.Parameter);
-        mload:= EmbeddedLoader(@pUri, 1);
-        val_ocall(mload, val_id('loadmodule'), [alloc_string(FileName), mload], @exc);
-        if (ctx.main <> nil) and config.use_cache then begin
-          ModNeko.CacheModule(module, @Self, ctx.main);
-          module:= nil;
-        end;
+        module.Cache(nil, @Self);
       end;
-    finally
-      if module <> nil then
-        module.Lock.Release;
+    end else if FTime > 0 then begin
+      if trace_module_loading then DbgTraceFmt('load and run %s age: %d', [FileName, FTime]);
+      ctx.main:= nil;
+      pUri:= PChar(H.FRequest.Parameter);
+      mload:= EmbeddedLoader(@pUri, 1);
+      val_ocall(mload, val_id('loadmodule'), [alloc_string(FileName), mload], @exc);
+      if (ctx.main <> nil) and config.use_cache then begin
+        if trace_module_loading then DbgTraceFmt('cache %s', [FileName]);
+        module.Cache(ctx.main, @Self);
+      end else begin
+        if true then DbgTraceFmt('%s does not want to be cached', [FileName]);
+        module.Cache(nil, @Self);
+      end;
+    end else begin
+      if trace_module_loading then DbgTraceFmt('not found %s', [FileName]);
+      Result:= False;
     end;
+    if trace_module_loading then DbgTraceFmt('completed %s module is cached: %d', [FileName, ord(module.isCached(@self))]);
   except
-    on e: Exception do
-      H.Log(e.Message);
+    on e: Exception do begin
+      H.LogError(e.Message);
+      p4nHelper.DbgTraceFmt('error %s in %s', [e.Message, FileName]);
+    end;
   end;
+  module.Lock.Leave;
   if exc <> nil then begin
     //send_headers(@ctx);
     H.SendData('Neko Exception');
+    p4nHelper.DbgTrace(neko.ReportException(vm, exc, true));
   end;
   //H.Log('neko request done');
 end;
 
 { TCacheMod }
 
-constructor TCacheMod.Create(AMain: value; AFileName: string; ATime: Integer);
+procedure TCacheMod.Cache(AMain: value; r: PHTTPRequest);
+begin
+  if AMain = nil then begin
+    main^:= nil;
+    Time:= 0;
+    gc_major();
+  end else begin
+    main^:= AMain;
+    if r.FTime > 0 then
+      Time:= r.FTime;
+  end;
+end;
+
+constructor TCacheMod.Create(AMain: value; r: PHTTPRequest);
 begin
   main:= alloc_root(1);
   main^:= AMain;
-  FileName:= AFileName;
-  Time:= ATime;
+  FileName:= r.FileName;
+  Time:= r.FTime;
   Hits:= 0;
   Lock:= TCriticalSection.Create;
+  Hash:= r.Hash;
 end;
 
 destructor TCacheMod.Destroy;
@@ -724,6 +748,7 @@ begin
   FreeAndNil(Lock);
   inherited;
 end;
+
 
 
 initialization
