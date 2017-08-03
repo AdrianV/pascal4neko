@@ -60,19 +60,39 @@ typedef DateTimeRec = { > DateRec,
 	DateTime encodes the Date and Time in a Float, compatible to the Delphi and Freepascal TDateTime type. The Date value is 
 	encoded in the Int part of the Float counted from 12/30/1899. The Time value is encoded in the fractional part of the Float.
 **/
-#if js @:expose("p4n.DateTime") #end
+#if (js && !nodejs) @:expose("p4n.DateTime") #end
 abstract DateTime(Float) from Float to Float
 {
 	static inline var DATE_DELTA: Int = 693594;
-	static var MD0(default, null) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
-	static var MD1(default, null) = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
+	static var MD0(default, never) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
+	static var MD1(default, never) = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
 	static inline var D1: Int = 365;
 	static inline var D4: Int = D1 * 4 + 1;
 	static inline var D100: Int = D4 * 25 - 1;
 	static inline var D400: Int = D100 * 4 + 1;
-	static public inline var HOURS: Float = 1 / 24;
-	static public inline var MINUTES: Float = 1 / (24 * 60);
-	static public inline var SECONDS: Float = 1 / (24 * 60 * 60);
+	static public inline var HOURS_PER_DAY = 24;
+	static public inline var MINUTES_PER_DAY = (24 * 60);
+	static public inline var SECONDS_PER_DAY = (24 * 60 * 60);
+	static public inline var HOURS: Float = 1 / HOURS_PER_DAY;
+	static public inline var MINUTES: Float = 1 / MINUTES_PER_DAY;
+	static public inline var SECONDS: Float = 1 / SECONDS_PER_DAY;
+	static public inline var UNIX_START = 25569;
+
+  static var MD0S(default, never) = getMDSum(false);
+  static var MD1S(default, never) = getMDSum(true);
+	
+  macro static function getMDSum(isLeap: Bool) {
+    var md = isLeap ? MD1 : MD0;
+    var result = new Array<Int>();
+    var sum = 0;
+    for (d in md) {
+    	sum += d;
+      result.push(sum);
+   	}
+  	var exprs = [for(value in result) macro $v{value}];
+  	return macro $a{exprs};
+  }
+	
 	/**
 	 * the default first day in the week is Monday. Adjust to your needs
 	 */
@@ -117,25 +137,24 @@ abstract DateTime(Float) from Float to Float
 		#end
 	}
 	
-	public static function isLeapYear(year: Int): Bool {
+	public static inline function isLeapYear(year: Int): Bool {
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
 	
 	public static function encode(year: Int, month: Int, day: Int): DateTime {
 		var dayTable = if (isLeapYear(year)) MD1 else MD0;
-		  
 		if ((year >= 1) && (year <= 9999) && (month >= 1) && (month <= 12) 
 			&& (day >= 1) && (day <= dayTable[month]))
 		{
-			var I = 1;
-			while (I < month) {
-				day += dayTable[I++];
+			if (month > 1) {
+				day += if (isLeapYear(year)) MD1S[month-1] else MD0S[month-1];
 			}
-			I = year - 1;
+			var I = year - 1;
 			return (I * 365 + Math.floor(I / 4) - Math.floor(I / 100) + Math.floor(I / 400) + day - DATE_DELTA);
 		} else
 			return 0.0;
 	}
+
 	
 	public static inline function encodeTime(hour: Int, minute: Int, sec: Float): DateTime {
 		return ((hour * HOURS) + minute * MINUTES + sec * SECONDS);
@@ -179,22 +198,28 @@ abstract DateTime(Float) from Float to Float
 				d += D1;
 			}
 			y += i;
-			var dayTable = if (isLeapYear(y)) MD1 else MD0;
-			var m = 1;
-			//trace(D);
+			var dayTable = if (isLeapYear(y)) MD1S else MD0S;
+      var m = Std.int(d / 29) + 1;
+      var dmax = dayTable[m-1];
+      if (d < dmax) {
+        m--;
+        dmax = dayTable[m-1];
+      }
+      #if false
+			var m = 1; // Std.int(d / 29);
 			while (true) {
 				i = dayTable[m];
 				if (d < i) break;
-				//trace({D:D, I:I, M:M});
 				d -= i;
 				m++;
 			}
 			var res: DateRec = { day: d + 1, month: m, year: y };
-			//trace(res);
 			return res;
+      #end
+      return { day: d - dmax + 1, month: m, year: y };
 		}
 	}
-	
+		
 	/**
 	 * returns the year value of a DateTime
 	 * e.g. 11/28/2015 -> 2015
@@ -378,9 +403,46 @@ abstract DateTime(Float) from Float to Float
 	public static function now(): DateTime {
 		return fromDate(Date.now());
 	}
+	
+	/**
+	 * creates DateTime from Unix timestamp (seconds since 1970-01-01)
+	 * @param	tsec timestamp (seconds since 1970-01-01)
+	 * @return DateTime
+	 */
+	public static inline function fromUnixTimestamp(tsec: Float): DateTime {
+		return new DateTime(UNIX_START + tsec * SECONDS);
+	}
+	
+	/**
+	 * converts DateTime to Unix timestamp
+	 * @return seconds since 1970-01-01
+	 */
+ 
+	public function toUnixTimestamp(): Float {
+		return (this - UNIX_START) * SECONDS_PER_DAY;
+	}
+	
+	/*
+	 * returns the current delta between utc and local time
+	 */
+	static public function getTimeOffset(): Float {
+		var n = Date.now();
+		return fromUnixTimestamp(n.getTime() / 1000) - fromDate(n);
+	}
+	
+	/*
+	 * return utc time when this time is local, otherwhise junk !
+	 */
+	public inline function utc(): DateTime return this + getTimeOffset();
+	
+	/*
+	 * return local time when this time is utc, otherwhise junk !
+	 */
+	public inline function localTime(): DateTime return this - getTimeOffset();
+	
 }
 
-#if js
+#if (js && !nodejs)
 private class Init {
 	private static function __init__() : Void untyped {
 		function set() {
