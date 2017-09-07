@@ -36,6 +36,12 @@ typedef DateTimeRec = { > DateRec,
 	> TimeRec,
 }
 
+typedef WeekNumber = {
+	week: Int,
+	year: Int,
+	weekDay: WeekDays,
+}
+
 @:forward
 @:enum abstract WeekDays(Int) from Int to Int {
 	var Mon = 0;
@@ -284,7 +290,7 @@ abstract DateTime(Float) from Float to Float
 		return encode(dt.year, dt.month, day);
 	}
 	
-	public function ISOWeekNumber() {
+	public function ISOWeekNumber(): WeekNumber {
 		//var YearOfWeekNumber, WeekDay: Integer): Integer;
 		var weekDay : WeekDays = ((dayOfWeek() - ISOFirstWeekDay + 7) % 7) + 1;
 		var day4: DateTime = this - weekDay + 8 - ISOFirstWeekMinDays;
