@@ -324,7 +324,7 @@ abstract DateTime(Float) from Float to Float
 	
 	//public static function DecodeDateTime(dt: Float): DateTimeRec { return if (dt != null) TDateTime.fromFloat(dt).decodeDateTime() else null; }
 	
-	public inline function format(f: String) return DateTools.format(toDate(), f);
+	public inline function format(f: String) return if (isInitialized()) DateTools.format(toDate(), f) else "";
 	
 	@:to public inline function toInt(): Int { return Math.floor(this); }
 	
@@ -448,7 +448,7 @@ abstract DateTime(Float) from Float to Float
 	
 }
 
-#if (js && !nodejs)
+#if (js && !nodejs && haxe_ver < 3.1)
 private class Init {
 	private static function __init__() : Void untyped {
 		function set() {
