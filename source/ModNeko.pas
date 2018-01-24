@@ -363,39 +363,38 @@ function get_post_data(): value; cdecl;
 var
   c: PContext;
 
-  procedure ReadPostData;
-  var j, l: Integer;
-      b: String;
+  function ReadPostData: String;
+  var
+    j, l: Integer;
+    b: String;
+    w: TvsHTTPHandler;
   begin
-    //Read in postdata:
-    with c.r.H do begin
-      FPostData := '';
-      l := StrToIntDef (FRequest.Header.Values['Content-Length'], 0);
-      if (l<=0) then begin
-        FMode := cmClose;
-        exit;
-      end;
-      while (length (FPostData) < l) and (FSock.LastError = 0) do
-      begin
-        j := l - length (FPostData);
-        if j>2048 then
-          j := 2048;
-        b := FSock.RecvBufferStr (j, 30000);
-        if b='' then //sorry, taken too long, aborting
-          begin
-            FPostData := '';
-            break;
-          end
-        else
-          FPostData := FPostData + b;
-      end;
+    w:= c.r.H;
+    //Result := '';
+    l := StrToIntDef (w.FRequest.Header.Values['Content-Length'], 0);
+    if (l<=0) then begin
+      w.FMode := cmClose;
+      exit;
+    end;
+    while (length (Result) < l) and (w.FSock.LastError = 0) do
+    begin
+      j := l - length (Result);
+      if j>2048 then
+        j := 2048;
+      b := w.FSock.RecvBufferStr (j, 30000);
+      if b = '' then begin // timeout
+        Result := '';
+        break;
+      end else
+        Result := Result + b;
     end;
   end;
 
 begin
   c:= CONTEXT();
-  if (c.r.H.FPostData = '') and (c.r.H.FRequest.Header.Values['Content-Length'] <> '') then
-    ReadPostData;
+  if (c.r.H.FPostData = '') // and (c.r.H.FRequest.Header.Values['Content-Length'] <> '')
+  then
+    c.r.H.FPostData:= ReadPostData;
   Result:= alloc_string(c.r.H.FPostData);
 end;
 
@@ -622,8 +621,14 @@ begin
       lockList.Add(Result);
     end;
   finally
-    Result.Lock.Enter;
-    FCache.UnlockList;
+    //DbgTrace('want: ' + Result.FileName);
+    if Result.Lock.TryEnter then begin
+      FCache.UnlockList;
+    end else begin
+      FCache.UnlockList;
+      Result.Lock.Acquire;
+    end;
+    //DbgTrace('locked: ' + Result.FileName);
   end;
 end;
 
@@ -643,7 +648,7 @@ function THTTPRequest.DoRequest: Boolean;
 var
   ctx: TContext;
   vm: Pneko_vm;
-  sType: string;
+  //sType: string;
   exc, old, mload: value;
   pUri: PChar;
   module: TCacheMod;
@@ -660,13 +665,15 @@ begin
   ctx.headers_sent:= False;
   H.FResponse.MimeType:='text/html';
   ctx.content_type:= alloc_string(H.FResponse.MimeType);
-  sType:= H.FRequest.Header.Values['Content-Type'];
+  //sType:= H.FRequest.Header.Values['Content-Type'];
   vm:= neko_vm_alloc(nil);
   neko_vm_set_custom(vm, k_mod_neko, @ctx);
   neko_vm_jit(vm, 1);
   neko_vm_redirect(vm, @request_print, @Self); //@ctx);
   neko_vm_select(vm);
-  if true then DbgTraceFmt('running module %s caching is %d', [FileName, ord(config.use_cache)]);
+
+  if False then DbgTraceFmt('running module %s caching is %d - request: %s',
+    [FileName, ord(config.use_cache), H.FPostData]);
   module:= ModNeko.FindCache(@Self);
   //module.Lock.Enter;
   try
@@ -707,7 +714,9 @@ begin
       p4nHelper.DbgTraceFmt('error %s in %s', [e.Message, FileName]);
     end;
   end;
-  module.Lock.Leave;
+  module.Lock.Release;
+  //DbgTrace('unlock: ' + module.FileName);
+  neko_vm_select(nil);
   if exc <> nil then begin
     //send_headers(@ctx);
     H.SendData('Neko Exception');

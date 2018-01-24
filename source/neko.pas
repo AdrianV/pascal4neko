@@ -566,7 +566,9 @@ end;
 
 function alloc_string(const S: string): value;
 begin
-  result:= _alloc_string(PAnsiChar(s));
+  result:= alloc_empty_string(Length(s));
+  if s <> '' then
+    Move(s[1], val_string(result)^, Length(s));
 end;
 
 function val_data(v: value): Pointer;
@@ -1181,25 +1183,27 @@ var
 begin
 	b:= alloc_buffer(nil);
 	st:= neko_exc_stack(vm);
-  for i := 0 to val_array_size(st) -1 do try
-		s := val_array_ptr(st)[i];
-		buffer_append(b,'Called from ');
-		if ( (s = nil) or val_is_null(s) ) then
-			buffer_append(b,'a C (internal) function')
-		else if( val_is_string(s) ) then begin
-			buffer_append(b, val_string(s));
-			buffer_append(b,' (no debug available)');
-		end else if  val_is_array(s)
-      and (val_array_size(s) = 2)
-      and val_is_string(val_array_ptr(s)[0])
-      and val_is_int(val_array_ptr(s)[1])
-    then begin
-			val_buffer(b, val_array_ptr(s)[0]);
-			buffer_append(b, ' line ');
-			val_buffer(b, val_array_ptr(s)[1]);
-		end else
-			val_buffer(b, s);
-		buffer_append(b, #$0d#$0A);
+  try for i := 0 to val_array_size(st) -1 do
+    begin
+      s := val_array_ptr(st)[i];
+      buffer_append(b,'Called from ');
+      if ( (s = nil) or val_is_null(s) ) then
+        buffer_append(b,'a C (internal) function')
+      else if( val_is_string(s) ) then begin
+        buffer_append(b, val_string(s));
+        buffer_append(b,' (no debug available)');
+      end else if  val_is_array(s)
+        and (val_array_size(s) = 2)
+        and val_is_string(val_array_ptr(s)[0])
+        and val_is_int(val_array_ptr(s)[1])
+      then begin
+        val_buffer(b, val_array_ptr(s)[0]);
+        buffer_append(b, ' line ');
+        val_buffer(b, val_array_ptr(s)[1]);
+      end else
+        val_buffer(b, s);
+      buffer_append(b, #$0d#$0A);
+    end;
   except
 	end;
 	if isexc then
