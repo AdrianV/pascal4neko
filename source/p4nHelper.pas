@@ -79,6 +79,7 @@ function ExtractFileNameWeb(const FileName: string): string;
 function ExtractFilePathWeb(const FileName: string): string;
 function ProgramData: string;
 function SplitString(var S: string; const limit: string):string;
+function EndsWith(const sEnd, s: string): boolean;
 function StartsWith(const sStart, s: string): boolean;
 
 procedure DefaultDebugTrace(const Msg: AnsiString);
@@ -385,7 +386,7 @@ begin
   Result:= Sysutils.GetEnvironmentVariable('ProgramData');
   if Result = '' then begin
     Result:= IncludeTrailingPathDelimiter(Sysutils.GetEnvironmentVariable('ALLUSERSPROFILE'));
-    s:= ExtractFileName(ExcludeTrailingBackslash(Sysutils.GetEnvironmentVariable('APPDATA')));
+    s:= ExtractFileName(ExcludeTrailingPathDelimiter(Sysutils.GetEnvironmentVariable('APPDATA')));
     if s = '' then begin
       s:= 'Anwendungsdaten';
       if not DirectoryExists(Result + s) then
@@ -393,6 +394,11 @@ begin
     end;
     Result:= Result + s;
   end;
+end;
+
+function EndsWith(const sEnd, s: string): boolean;
+begin
+	result := LowerCase(sEnd) = LowerCase(copy(s, 1 + Length(s) - length(sEnd), MaxInt));
 end;
 
 function StartsWith(const sStart, s: string): boolean;
