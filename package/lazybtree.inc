@@ -149,7 +149,7 @@ end;
 
 function DeleteItem(n: PNode; x: Integer): PNode; inline;
 var
-  i: Integer;
+  cnt: Integer;
   it2: PItems;
 begin
   with n.Items[x] do begin
@@ -160,7 +160,8 @@ begin
     end;
     CleanKey(Key);
   end;
-  case n.Count of
+  cnt:= n.Count;
+  case cnt of
     2 + High(TItems1): it2:= MemAlloc(sizeof(TItems1));
     //2 + High(TItems2): New(PItems3(it2));
     2 + High(TItems2): it2:= MemAlloc(sizeof(TItems2));
@@ -169,20 +170,21 @@ begin
     else
       it2:= n.Items;
   end;
-  dec(n.Count);
-  if n.Count > 0 then begin
+  dec(cnt);
+  n.Count:= cnt;
+  if cnt > 0 then begin
     if it2 <> n.Items then begin
       if x > 0 then
         Move(n.Items[0], it2[0], x * sizeof(RItem));
-      if x < n.Count then
-        Move(n.Items[x + 1], it2[x], (n.Count - x) * sizeof(RItem));
+      if x < cnt then
+        Move(n.Items[x + 1], it2[x], (cnt - x) * sizeof(RItem));
       MemFree(n.Items);
       n.Items:= it2;
     end else begin
-      if x < n.Count then begin
-        Move(n.Items[x + 1], it2[x], (n.Count - x) * sizeof(RItem));
+      if x < cnt then begin
+        Move(n.Items[x + 1], it2[x], (cnt - x) * sizeof(RItem));
       end;
-      FillChar(it2[n.Count], sizeof(RItem), 0);
+      FillChar(it2[cnt], sizeof(RItem), 0);
     end;
     Result:= n;
   end else begin
@@ -262,9 +264,10 @@ end;
 
 function InsertItem(n: PNode; x: Integer; const AKey: TKeyType; AValue: TValueType): PItem;
 var
-  i: Integer;
+  cntMin1: Integer;
   //it2: PItems;
 begin
+  cntMin1 := n.Count;
   inc(n.Count);
   case n.Count of
     2 + High(TItems1): begin
@@ -292,8 +295,8 @@ begin
       Move(n.Items^, it2^, x * sizeof(RItem));
     end;
   end;}
-  if x < n.Count - 1 then begin
-    Move(n.Items[x], n.Items[x+1], (n.Count - x - 1) * sizeof(RItem));
+  if x < cntMin1 then begin
+    Move(n.Items[x], n.Items[x+1], (cntMin1 - x) * sizeof(RItem));
     FillChar(n.Items[x], sizeof(RItem), 0);
   end;
   //FillChar(n.Items[x], sizeof(RItem), 0);
