@@ -16,9 +16,9 @@ abstract NekoStringArray(NativeArray<NativeString>) from NativeArray<NativeStrin
 		}
 	}
 	@:from static public function fromArray(a: Array<String>) { 
-		var r: NativeArray<NativeString> = NativeArray.alloc(a.length);
+		var r = NativeArray.alloc(a.length);
 		for (i in 0 ... a.length) r[i] = NativeString.ofString(a[i]);
-		return r; 
+		return new NekoStringArray(r); 
 	}
 }
 
@@ -38,7 +38,7 @@ abstract NekoArray<T>(NativeArray<T>) from NativeArray<T> to NativeArray<T> {
 	}
 	
 	@:from static inline public function fromArray<T>(a: Array<T>) { 
-		return NativeArray.ofArrayCopy(a); 
+		return new NekoArray(NativeArray.ofArrayCopy(a)); 
 	}
 	
 	public static function toHaxeInplace(o: Dynamic): Dynamic {
