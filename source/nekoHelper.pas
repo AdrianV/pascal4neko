@@ -79,6 +79,7 @@ function ValueToVariant(v: value): Variant;
 function VariantToValue(v: Variant): value;
 function TObject_NekoLink(this: value; Self: TObject): value;
 function nekoObject_of(Self: TObject): value;
+procedure InitNekoHelper;
 
 var
   custom_convert1: TCustomConvert = nil;
@@ -231,15 +232,22 @@ var
   FPUCW: Word;
 begin
   this:= vthis;
-  DbgTrace('load module: ' + val_string(mname));
-  args[0]:= mname;
-  args[1]:= vthis;
-  loader:= val_field(this, id__loader);
-  f:= val_field(loader, val_id('loadmodule'));
-  FPUCW:= Get8087CW;
-  Set8087CW($27F);
-  Result:= val_callEx(loader, f, @args[0], 2, @exc);
-  Set8087CW(FPUCW);
+  exc:= nil;
+  try
+    DbgTrace('load module: ' + val_string(mname));
+    args[0]:= mname;
+    args[1]:= vthis;
+    loader:= val_field(this, id__loader);
+    f:= val_field(loader, val_id('loadmodule'));
+    FPUCW:= Get8087CW;
+    Set8087CW($27F);
+    Result:= val_callEx(loader, f, @args[0], 2, @exc);
+    Set8087CW(FPUCW);
+  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
+  if exc <> nil then begin
+    p4nHelper.DbgTrace(neko.ReportException(neko_vm_current(), exc, true));
+    val_rethrow(exc);
+  end;
 end;
 
 function EmbeddedLoader(argv: PPChar; argc: Integer; loadmodule: TNekoCallback2): value;
@@ -506,7 +514,10 @@ begin
       end;
     end;
     varDispatch: begin
-      Result:= IInterface_GC(IInterface(pVar^.VDispatch));
+      if pVar^.VDispatch <> nil then
+        Result:= IInterface_GC(IInterface(pVar^.VDispatch))
+      else
+        Result:= val_null;
     end
     else
       Result:= alloc_string(v);
@@ -524,8 +535,12 @@ begin
     Result:= alloc_string('');
 end;
 
+var
+  TObject__init_called: Boolean = False;
+
 function TObject__init(self: value): value; cdecl;
 begin
+  TObject__init_called:= True;
   class_TObject_ := self;
   class__classes := val_field(self, val_id('_classes'));
 end;
@@ -588,6 +603,29 @@ begin
   end else Result:= nil;
 end;
 
+procedure InitNekoHelper;
+var
+  ol, patch: value;
+  vm: Pneko_vm;
+begin
+  if not TObject__init_called then begin
+    DbgTrace('patch Loader');
+    vm:= neko_vm_current;
+    DbgTrace(ValueToString(vm.env));
+    ol:= neko_default_loader(nil, 0);
+    DbgTrace(ValueToString(ol));
+    patch:= alloc_object(ol);
+    alloc_field(patch, id_loadprim, val_field(ol, id_loadprim));
+    alloc_field(patch, val_id('loadmodule'), val_field(ol, val_id('loadmodule')));
+    DbgTrace(ValueToString(patch));
+    alloc_field(ol, id__loader, patch);
+    alloc_field(ol, id_loadprim, alloc_function(@myLoadPrim, 2, 'loadprim'));
+    alloc_field(ol, val_id('loadmodule'), alloc_function(@myLoadModule, 2, 'loadmodule'));
+    DbgTrace(ValueToString(ol));
+    DbgTrace('patched');
+  end;
+end;
+
 procedure InitModule;
 const
   CExport: array[0..2] of TExportInfo = (
@@ -604,6 +642,7 @@ begin
 	id__loader:= val_id('_loader');
 	id_loadprim:= val_id('loadprim');
   AddExportTable(CExport);
+  DbgTrace('InitModule');
 end;
 
 initialization

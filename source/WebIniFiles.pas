@@ -392,7 +392,7 @@ end;
 function TWebIniFile.ReadString(const Section, Ident, Default: string): string;
 var
   s: string;
-  i, j: Integer;
+//  i, j: Integer;
 begin
 	FSec:= Section;
   FIdent:= Ident;

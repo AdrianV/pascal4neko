@@ -18,7 +18,8 @@ uses
   SysUtils,
   Classes,
   p4nInifiles in 'p4nInifiles.pas',
-  p4nstd in 'p4nstd.pas';
+  p4nstd in 'p4nstd.pas',
+  nekoHelper in 'nekoHelper.pas';
 
 {$R *.res}
 {$LIBVERSION 'ndll'}

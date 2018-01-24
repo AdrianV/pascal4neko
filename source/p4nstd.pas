@@ -187,6 +187,9 @@ function init_std(I: value): value; cdecl;
 var
   s: string;
 begin
+  //DbgTrace('init_std');
+  //if not NekoDLLIsLoaded then LoadNeko;
+  InitNekoHelper;
   Result:= val_null;
   if val_is_HaxeString(I) then begin
     s:= val_HaxeString(I);
