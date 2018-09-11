@@ -45,7 +45,7 @@ private class I {
 	public static dynamic function format(f: String, arg: Array < Dynamic > ): NekoString { return null; }
 	public static dynamic function formatFloat(f: String, x: Float): NekoString { return null; }
 	public static dynamic function formatDateTime(f: String, x: DateTime): NekoString { return null; }
-	public static dynamic function setFormat(format: Dynamic): Void { return null; }
+	public static dynamic function setFormat(format: Dynamic): Void {}
 	public static dynamic function parseDate(s: String): DateTime { return null; }
 	public static dynamic function parseDateTime(s: String): DateTime { return null; }
 	public static dynamic function parseTime(s: String): DateTime { return null; }

@@ -86,7 +86,7 @@ var
   custom_convert2: TCustomConvert = nil;
   custom_convert3: TCustomConvert = nil;
 
-threadvar
+var
   class_TObject_: value;
   class__classes: value;
 
