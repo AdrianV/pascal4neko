@@ -1,3 +1,4 @@
+package p4n;
 /**************************************************************************************************
 {                                                                                                  
 { The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License"); 
@@ -18,7 +19,7 @@
 {                                                                                                  
 {**************************************************************************************************/
 
-package p4n;
+import haxe.Utf8;
 import neko.Lib;
 import p4n.TObject;
 import p4n.NekoString;
@@ -71,6 +72,7 @@ class CustomIniFile extends TObject
 
 	public function getSections(): Array < String > { return I.getSections(_i).toArray(); }
 	public function readString(Section: String, Key: String, Default: String): String { return I.readString(_i, Section, Key, Default).toString(); }
+	public function readStringUtf8(Section: String, Key: String, Default: String): String { return Utf8.encode(I.readString(_i, Section, Key, Default).toString()); }
 	public function readInt(Section: String, Key: String, Default: Int): Int { return I.readInt(_i, Section, Key, Default); }
 	public function readBool(Section: String, Key: String, Default: Bool): Bool { return I.readBool(_i, Section, Key, Default); }
 	public function readDateTime(Section: String, Key: String, Default: DateTime): DateTime { return I.readDateTime(_i, Section, Key, Default); }
