@@ -25,18 +25,19 @@ import neko.Lib;
 import neko.NativeString;
 import p4n.MathX;
 
-class Globals implements Dynamic < Dynamic > {
-	private var g: Dynamic;
+abstract Globals(Dynamic) from Dynamic to Dynamic {
 	
-	public function new(_g) {
-		g = _g;
+	public inline function new(g) this = g;
+
+	@:resolve
+	public inline function resolve(name: String): Dynamic {
+		return if (this != null) return Reflect.field(this, name) else null;
 	}
-	public function resolve( name: String): Dynamic {
-		return if (g != null) return Reflect.field(g, name) else null;
-	}
+
 	public function set(name: String, value: Dynamic) {
-		if (g != null) Reflect.setField(g, name, value);
+		if (this != null) Reflect.setField(this, name, value);
 	}
+
 }
 #end
 
@@ -147,9 +148,9 @@ class Tools
 		}		
 		return o;
 	}
-	static var _app_terminated;
-	static var _get_global;
-	static var _app_path;
+	static var _app_terminated: Void->Bool;
+	static var _get_global: Void->Dynamic;
+	static var _app_path: Void->NativeString;
 	
 	static public function idOf(aField: String): Int {
 		var dummy = { };	
