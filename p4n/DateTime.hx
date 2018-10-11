@@ -62,6 +62,7 @@ typedef WeekNumber = {
 	@:op(A != B) static function neq(lhs:WeekDays, rhs:WeekDays):Bool;
 }
 
+
 /**
 	DateTime encodes the Date and Time in a Float, compatible to the Delphi and Freepascal TDateTime type. The Date value is 
 	encoded in the Int part of the Float counted from 12/30/1899. The Time value is encoded in the fractional part of the Float.
@@ -70,6 +71,7 @@ typedef WeekNumber = {
 abstract DateTime(Float) from Float to Float
 {
 	static inline var DATE_DELTA: Int = 693594;
+	
 	static var MD0(default, never) = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
 	static var MD1(default, never) = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; 
 	static inline var D1: Int = 365;
@@ -84,11 +86,12 @@ abstract DateTime(Float) from Float to Float
 	static public inline var SECONDS: Float = 1 / SECONDS_PER_DAY;
 	static public inline var UNIX_START = 25569;
 
-  static var MD0S(default, never) = getMDSum(false);
-  static var MD1S(default, never) = getMDSum(true);
-	
-  macro static function getMDSum(isLeap: Bool) {
-    var md = isLeap ? MD1 : MD0;
+	#if (!macro)
+  static var MD0S(default, never): Array<Int> = getMDSum(false);
+  static var MD1S(default, never): Array<Int> = getMDSum(true);
+	#end
+  macro static public function getMDSum(isLeap: Bool) {
+		var md = isLeap ? MD1 : MD0;
     var result = new Array<Int>();
     var sum = 0;
     for (d in md) {
@@ -98,7 +101,7 @@ abstract DateTime(Float) from Float to Float
   	var exprs = [for(value in result) macro $v{value}];
   	return macro $a{exprs};
   }
-	
+
 	/**
 	 * the default first day in the week is Monday. Adjust to your needs
 	 */
@@ -147,6 +150,7 @@ abstract DateTime(Float) from Float to Float
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
 	
+	#if (!macro)
 	public static function encode(year: Int, month: Int, day: Int): DateTime {
 		var dayTable = if (isLeapYear(year)) MD1 else MD0;
 		if ((year >= 1) && (year <= 9999) && (month >= 1) && (month <= 12) 
@@ -160,7 +164,6 @@ abstract DateTime(Float) from Float to Float
 		} else
 			return 0.0;
 	}
-
 	
 	public static inline function encodeTime(hour: Int, minute: Int, sec: Float): DateTime {
 		return ((hour * HOURS) + minute * MINUTES + sec * SECONDS);
@@ -445,6 +448,7 @@ abstract DateTime(Float) from Float to Float
 	 * return local time when this time is utc, otherwhise junk !
 	 */
 	public inline function localTime(): DateTime return this - getTimeOffset();
+	#end
 	
 }
 

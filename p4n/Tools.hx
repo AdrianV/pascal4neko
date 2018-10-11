@@ -30,7 +30,7 @@ abstract Globals(Dynamic) from Dynamic to Dynamic {
 	public inline function new(g) this = g;
 
 	@:resolve
-	public inline function resolve(name: String): Dynamic {
+	public function resolve(name: String): Dynamic {
 		return if (this != null) return Reflect.field(this, name) else null;
 	}
 
