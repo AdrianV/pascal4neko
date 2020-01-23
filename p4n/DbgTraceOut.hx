@@ -7,6 +7,7 @@ package p4n;
 
 #if neko	
 
+@:keepInit
 class DbgTraceOut 
 {
 	public static var trace_out(default, set): String->Dynamic->Void;

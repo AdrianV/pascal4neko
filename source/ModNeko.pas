@@ -287,7 +287,7 @@ end;
 
 function get_uri(): value; cdecl;
 begin
-  Result:= alloc_string(CONTEXT().r.H.FRequest.Parameter);
+  Result:= alloc_string(CONTEXT().r.H.FRequest.ParamRaw);
 end;
 
 function redirect(s: value): value; cdecl;
@@ -350,7 +350,7 @@ begin
     if FRequest.Command = 'POST' then
       Result:= DecodeURL( FPostData)
     else
-      Result:= GetParams(FRequest.Parameter);
+      Result:= FRequest.ParamQuery;
   end;
 end;
 
@@ -650,7 +650,7 @@ var
   vm: Pneko_vm;
   //sType: string;
   exc, old, mload: value;
-  pUri: PChar;
+  pUri: PAnsiChar;
   module: TCacheMod;
 
 
@@ -693,7 +693,7 @@ begin
     end else if FTime > 0 then begin
       if trace_module_loading then DbgTraceFmt('load and run %s age: %d', [FileName, FTime]);
       ctx.main:= nil;
-      pUri:= PChar(H.FRequest.Parameter);
+      pUri:= PAnsiChar(H.FRequest.ParamRaw);
       mload:= EmbeddedLoader(@pUri, 1);
       val_ocall(mload, val_id('loadmodule'), [alloc_string(FileName), mload], @exc);
       if (ctx.main <> nil) and config.use_cache then begin

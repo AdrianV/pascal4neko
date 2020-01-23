@@ -30,7 +30,7 @@ package p4n101;
 requires
   rtl,
   vcl,
-  SynaBaseDX1;
+  SynaBase20;
 
 contains
   lazyBtreeInt in '..\source\lazyBtreeInt.pas',

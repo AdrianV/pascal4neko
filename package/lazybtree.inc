@@ -36,6 +36,8 @@ type
     Node: PNode;
   end;
   TItemArray = array[0..cMaxItems-1] of RItem;
+  TKeyTypeArray = array of TKeyType;
+  TValueTypeArray = array of TValueType;
   PItems = ^TItemArray;
   RNode = record
     Items: PItems;

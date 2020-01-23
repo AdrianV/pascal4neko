@@ -265,12 +265,12 @@ abstract DateTime(Float) from Float to Float
 	/**
 	 * calculates the last day of the DateTime
 	 * DateTime.lastDayOf(2, 2008) -> 29
-	 * @param	Month
-	 * @param	Year
+	 * @param	month
+	 * @param	year
 	 * @return  the last day value of that month
 	 */
-	public static function lastDayOf(Month: Int, Year: Int): Int {
-		return if (isLeapYear(Year)) MD1[Month] else MD0[Month];
+	public static function lastDayOf(month: Int, year: Int): Int {
+		return if (isLeapYear(year)) MD1[month] else MD0[month];
 	}
 	
 	/**
@@ -377,9 +377,12 @@ abstract DateTime(Float) from Float to Float
 	//}
 	// todo
 	
-	#if false
+	#if (false)
 	// fromDynamic has bad side effects - better not to use it
-	@:from public static function fromDynamic(d: Dynamic): DateTime {
+	@:from 
+	#end
+	
+	public static function fromDynamic(d: Dynamic): DateTime {
 		switch Type.typeof(d) {
 			case TNull : return 0;
 			case TInt : return fromInt(d);
@@ -389,7 +392,6 @@ abstract DateTime(Float) from Float to Float
 		}
 		return 0;
 	}
-	#end
 	
 	public static function fromTime(d: Date): DateTime {
 		return d != null ? DateTime.encodeTime(d.getHours(), d.getMinutes(), d.getSeconds()) : 0.0;

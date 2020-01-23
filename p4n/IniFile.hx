@@ -19,7 +19,7 @@ package p4n;
 {                                                                                                  
 {**************************************************************************************************/
 
-import haxe.Utf8;
+import neko.Utf8;
 import neko.Lib;
 import p4n.TObject;
 import p4n.NekoString;
@@ -77,7 +77,7 @@ class CustomIniFile extends TObject
 	public function readBool(Section: String, Key: String, Default: Bool): Bool { return I.readBool(_i, Section, Key, Default); }
 	public function readDateTime(Section: String, Key: String, Default: DateTime): DateTime { return I.readDateTime(_i, Section, Key, Default); }
 	public function readFloat(Section: String, Key: String, Default: Float): Float { return I.readFloat(_i, Section, Key, Default); }
-	public function readSection(Section: String): Array < String > { trace(Section); return I.readSection(_i, Section).toArray(); }
+	public function readSection(Section: String): Array < String > { return I.readSection(_i, Section).toArray(); }
 
 	public function readSectionKeys(Section: String): Array < String > { return I.readSectionKeys(_i, Section).toArray(); }
 
