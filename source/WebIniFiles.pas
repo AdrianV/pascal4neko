@@ -74,8 +74,8 @@ type
     destructor Destroy; override;
     function Expand(const s: string): string;
     function ReadString(const Section, Ident, Default: string): string; override;
-    procedure ReadExpandedSectionValues(const Section: string; Strings: TStrings); 
-    procedure WriteSectionValues(const Section: string; Strings: TStrings); 
+    procedure ReadExpandedSectionValues(const Section: string; Strings: TStrings);
+    procedure WriteSectionValues(const Section: string; Strings: TStrings);
   end;
   TIniStack = record
     name: string;
@@ -85,8 +85,10 @@ type
 
 function OpenStream(const AFileName: string; ACallback: TLoadProgressCallback = nil): ILoadStream;
 function CheckUpdate(const AppName: string = ''; const AParams: string = ''; ACallback: TLoadProgressCallback = nil): IWebUpdate;
+procedure SetThreadEnv(const Name, Value: String);
 
 implementation
+
 
 type
   TLoadStream = class (TInterfacedObject, ILoadStream)
@@ -118,6 +120,41 @@ type
   	constructor Create(ACallback: TLoadProgressCallback);
     destructor Destroy; override;
   end;
+  TEnvKeyValue = record
+    Key, Value: String;
+  end;
+  TDynTEnvKeyValueArray = array of TEnvKeyValue;
+
+threadvar
+  overrideEnv: TDynTEnvKeyValueArray;
+
+{ procs }
+function FindThreadEnv(const env: TDynTEnvKeyValueArray; const Name: String): Integer;
+var
+  i: Integer;
+begin
+  for i := 0 to High(env) do begin
+    if SameText(env[i].Key, Name) then begin
+      Result:= i;
+      exit;
+    end;
+  end;
+  Result:= -1;
+end;
+
+procedure SetThreadEnv(const Name, Value: String);
+var
+  x: Integer;
+begin
+  x:= FindThreadEnv(overrideEnv, Name);
+  if x < 0 then begin
+    x:= Length(overrideEnv);
+    SetLength(overrideEnv, x + 1);
+    overrideEnv[x].Key:= Name;
+  end;
+  overrideEnv[x].Value:= Value;
+end;
+
 
 { TWebIniFile }
 
@@ -149,7 +186,7 @@ begin
     t.name:= '';
     Dispose(t);
   end;
-	FIdent:= '';  
+	FIdent:= '';
   FSec:= '';
 	inherited;
 end;
@@ -165,6 +202,7 @@ var
   var
     s1, p1, p2, p3, sIdent, sSec: string;
     ini: TWebIniFile;
+    x: Integer;
   begin
     sIdent:= FIdent;
     sSec:= FSec;
@@ -199,8 +237,11 @@ var
       dec(Flevel);
     end else if SameText(s1, 'env') then begin
       p1:= SplitString(s, '|');
-      //p2:= SplitStringAt(s, '|');
-      Result:= GetEnvironmentVariable(p1);
+      x:= FindThreadEnv(overrideEnv, p1);
+      if (x >= 0) and (overrideEnv[x].Value <> '') then
+        Result:= overrideEnv[x].Value
+      else
+        Result:= GetEnvironmentVariable(p1);
       //GetEnvironmentVar(p1, Result, True);
       if Result = '' then
         Result:= s;
