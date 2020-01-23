@@ -56,13 +56,13 @@ class Tools
 				var v: Dynamic = __dollar__objget(o, f[i]);
 				var t = __dollar__typeof(v);
 				if (t == __dollar__tstring) {
-					var s = haxe.Utf8.encode(new String(v));
+					var s = neko.Utf8.encode(new String(v));
 					__dollar__objset(o, f[i], s);
 				} else if (t == __dollar__tabstract) { 
 					__dollar__objset(o, f[i], null); 
 				} else if (t == __dollar__tobject) {
 					if (v.__s != null)
-						__dollar__objset(o, f[i], haxe.Utf8.encode(v));
+						__dollar__objset(o, f[i], neko.Utf8.encode(v));
 				} else if (t== __dollar__tarray) {
 					var a = neko.NativeArray.toArray(v); 
 					for (i in 0...a.length) exportObject(a[i]); 
@@ -73,6 +73,7 @@ class Tools
 		}
 		return o;
 	}
+
 	public static function exportList<T>(data: List<T>) : List<T>
 	{
 		if (data == null) return null;
@@ -92,7 +93,6 @@ class Tools
 		return data;
 	}
 	
-
 	static public function toHaxe(o: Dynamic): Dynamic untyped {
 		switch( __dollar__typeof(v) ) {
 		case 0: return v;
@@ -132,7 +132,7 @@ class Tools
 						if (toUtf == null || !toUtf)
 							__dollar__objset(o, fx, new String(v));
 						else {
-							var s = haxe.Utf8.encode(new String(v));
+							var s = neko.Utf8.encode(new String(v));
 							__dollar__objset(o, fx, s);
 						}
 				} else if (t == __dollar__tabstract) {
@@ -148,6 +148,53 @@ class Tools
 		}		
 		return o;
 	}
+
+	public static function object2Ansi(o: Dynamic): Dynamic untyped {
+		if (o == null || __dollar__typeof(o) != 5) return o;
+		var f = __dollar__objfields(o);
+		var i = 0;
+		var l = __dollar__asize(f);
+		while( i < l ) {
+			var v: Dynamic = __dollar__objget(o, f[i]);
+			var t = __dollar__typeof(v);
+			if (t == __dollar__tstring) {
+				var s = neko.Utf8.decode(new String(v));
+				__dollar__objset(o, f[i], s);
+			//} else if (t == __dollar__tabstract) { 
+			//   __dollar__objset(o, f[i], null); 
+			} else if (t == __dollar__tobject) {
+				if (v.__s != null)
+					__dollar__objset(o, f[i], neko.Utf8.decode(v));
+			} else if (t== __dollar__tarray) {
+				var a = neko.NativeArray.toArray(v); 
+				for (i in 0...a.length) toAnsi(a[i]); 
+				__dollar__objset(o, f[i], a);
+			}
+			i = i + 1;
+		}
+		return o;
+	}
+
+	static public function toAnsi(o: Dynamic): Dynamic untyped {
+		switch( __dollar__typeof(v) ) {
+		case 0: return v;
+		case 1: return v;
+		case 2: return v;
+		case 3: return v;
+		case 4: return neko.Utf8.decode(new String(v));
+		case 6:
+			var a = Array.new1(v,__dollar__asize(v));
+			for( i in 0...a.length )
+				a[i] = toAnsi(a[i]);
+			return a;
+		case 5: return NekoToHaxeObject(v);
+		default: 
+			return v;
+			//throw "Can't convert "+string(v);
+		}		
+	}
+
+
 	static var _app_terminated: Void->Bool;
 	static var _get_global: Void->Dynamic;
 	static var _app_path: Void->NativeString;
