@@ -1261,9 +1261,7 @@ end;
 
 function NekoSaveException(e: Exception): value;
 begin
-	Result:= alloc_object(nil);
-  alloc_field(Result, val_id('message'), alloc_string(e.Message));
-  alloc_field(Result, val_id('exception'), alloc_string(e.ClassName));
+	Result:= alloc_string(e.ClassName + ': ' + e.Message);
 end;
 
 procedure NekoThrowException(v: value);

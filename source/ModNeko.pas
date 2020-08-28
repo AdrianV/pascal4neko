@@ -197,7 +197,7 @@ begin
     if c = nil then c := CONTEXT().r;
     if (size = -1) then size := strlen(data);
     c.H.SendData(data, size);
-  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 procedure null_print(const data: PChar; size: Integer; param: Pointer); cdecl;
@@ -258,7 +258,7 @@ begin
       if (s[ende] <> ';') or (s[ende+1] <> ' ') then break;
       start:= ende + 2;
     end;
-  except on e: Exception do val_rethrow(NekoSaveException(e)); end;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function set_cookie(name, v: value): value; cdecl;
@@ -266,69 +266,85 @@ var
   s: string;
   c: PContext;
 begin
-  c:= CONTEXT();
-  if c <> nil then begin
-    s:= ValueToString(name) + '=' + ValueToString(v) + ';';
-    c.r.H.FResponse.Header.Values['Set-Cookie']:= s;
-    Result:= val_true;
-  end else
-    Result:= val_false;
+  try
+    c:= CONTEXT();
+    if c <> nil then begin
+      s:= ValueToString(name) + '=' + ValueToString(v) + ';';
+      c.r.H.FResponse.Header.Values['Set-Cookie']:= s;
+      Result:= val_true;
+    end else
+      Result:= val_false;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_host_name(): value; cdecl;
 begin
-  Result:= alloc_string(CONTEXT().r.H.FSettings.FServerName);
+  try
+    Result:= alloc_string(CONTEXT().r.H.FSettings.FServerName);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_client_ip(): value; cdecl;
 begin
-  Result:= alloc_string(CONTEXT().r.H.FIPInfo.RemoteIP);
+  try
+    Result:= alloc_string(CONTEXT().r.H.FIPInfo.RemoteIP);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_uri(): value; cdecl;
 begin
-  Result:= alloc_string(CONTEXT().r.H.FRequest.ParamRaw);
+  try
+    Result:= alloc_string(CONTEXT().r.H.FRequest.ParamRaw);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function redirect(s: value): value; cdecl;
 begin
-  val_check_string(s);
-  with CONTEXT().r.H do begin
-    FResponse.Header.Values['Location']:= val_string(s);
-    FResponse.ResponseCode:= 307;
-  end;
-  Result:= val_true;
+  try
+    val_check_string(s);
+    with CONTEXT().r.H do begin
+      FResponse.Header.Values['Location']:= val_string(s);
+      FResponse.ResponseCode:= 307;
+    end;
+    Result:= val_true;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function set_return_code(i: value): value; cdecl;
 begin
-  if val_is_int(i) then begin
-    CONTEXT().r.H.FResponse.ResponseCode:= val_int(i);
-    Result:= val_true;
-  end else
-    Result:= nil;
+  try
+    if val_is_int(i) then begin
+      CONTEXT().r.H.FResponse.ResponseCode:= val_int(i);
+      Result:= val_true;
+    end else
+      Result:= nil;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function set_header(s, v: value): value; cdecl;
 var
   c: PContext;
 begin
-  c:= CONTEXT();
-  val_check_string(s);
-  val_check_string(v);
-  if SameStr(val_string(s), 'Content-Type') then begin
-    c.r.H.FResponse.MimeType:= val_string(v);
-    c.content_type:= alloc_string(c.r.H.FResponse.MimeType);
-  end else begin
-    c.r.H.FResponse.Header.Values[val_string(s)]:= val_string(v);
-  end;
-  Result:= val_true;
+  try
+    c:= CONTEXT();
+    val_check_string(s);
+    val_check_string(v);
+    if SameStr(val_string(s), 'Content-Type') then begin
+      c.r.H.FResponse.MimeType:= val_string(v);
+      c.content_type:= alloc_string(c.r.H.FResponse.MimeType);
+    end else begin
+      c.r.H.FResponse.Header.Values[val_string(s)]:= val_string(v);
+    end;
+    Result:= val_true;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_client_header(s: value): value; cdecl;
 begin
-  val_check_string(s);
-  Result:= alloc_string( CONTEXT().r.H.FRequest.Header.Values[val_string(s)]);
+  try
+    val_check_string(s);
+    Result:= alloc_string( CONTEXT().r.H.FRequest.Header.Values[val_string(s)]);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_client_headers(): value; cdecl;
@@ -336,27 +352,33 @@ var
   i: Integer;
   c: PContext;
 begin
-  c:= CONTEXT();
-  Result:= val_null;
-  with c.r.H.FRequest.Header do
-  for i := 0 to Count - 1 do begin
-    Result:= AddToTable(Result, Names[i], ValueFromIndex[i]);
-  end;
+  try
+    c:= CONTEXT();
+    Result:= val_null;
+    with c.r.H.FRequest.Header do
+    for i := 0 to Count - 1 do begin
+      Result:= AddToTable(Result, Names[i], ValueFromIndex[i]);
+    end;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function RequestParams: string;
 begin
-  with CONTEXT().r.H do begin
-    if FRequest.Command = 'POST' then
-      Result:= DecodeURL( FPostData)
-    else
-      Result:= FRequest.ParamQuery;
-  end;
+  try
+    with CONTEXT().r.H do begin
+      if FRequest.Command = 'POST' then
+        Result:= DecodeURL( FPostData)
+      else
+        Result:= FRequest.ParamQuery;
+    end;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_params_string(): value; cdecl;
 begin
-  Result:= alloc_string(RequestParams);
+  try
+    Result:= alloc_string(RequestParams);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_post_data(): value; cdecl;
@@ -391,11 +413,13 @@ var
   end;
 
 begin
-  c:= CONTEXT();
-  if (c.r.H.FPostData = '') // and (c.r.H.FRequest.Header.Values['Content-Length'] <> '')
-  then
-    c.r.H.FPostData:= ReadPostData;
-  Result:= alloc_string(c.r.H.FPostData);
+  try
+    c:= CONTEXT();
+    if (c.r.H.FPostData = '') // and (c.r.H.FRequest.Header.Values['Content-Length'] <> '')
+    then
+      c.r.H.FPostData:= ReadPostData;
+    Result:= alloc_string(c.r.H.FPostData);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function parse_multipart_data(onpart, ondata: value): value; cdecl;
@@ -404,20 +428,22 @@ var
   content_type, boundary, data: string;
   len: Integer;
 begin
-  c:= CONTEXT();
-  Result:= val_null; //not implemented
-  boundary:= c.r.H.FRequest.Header.Values['Content-Type'];
-  content_type:= SplitString(boundary, ';');
-  if not SameStr(content_type, 'multipart/form-data') then begin
-    DbgTrace(content_type);
-    exit;
-  end;
-	val_check_function(onpart,2);
-	val_check_function(ondata,3);
-  len:= StrToIntDef (c.r.H.FRequest.Header.Values['Content-Length'], 0);
-  if len = 0 then len := 8192;
-  //data:= c.r.H.FSock.RecvBufferStr (len, 30000);
-  //DbgTraceFmt('data: %d', [length(data)]);
+  try
+    c:= CONTEXT();
+    Result:= val_null; //not implemented
+    boundary:= c.r.H.FRequest.Header.Values['Content-Type'];
+    content_type:= SplitString(boundary, ';');
+    if not SameStr(content_type, 'multipart/form-data') then begin
+      DbgTrace(content_type);
+      exit;
+    end;
+    val_check_function(onpart,2);
+    val_check_function(ondata,3);
+    len:= StrToIntDef (c.r.H.FRequest.Header.Values['Content-Length'], 0);
+    if len = 0 then len := 8192;
+    //data:= c.r.H.FSock.RecvBufferStr (len, 30000);
+    //DbgTraceFmt('data: %d', [length(data)]);
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function get_params(): value; cdecl;
@@ -425,46 +451,56 @@ var
   c: PContext;
   s, s1, n: string;
 begin
-  c:= CONTEXT();
-  Result:= val_null;
-  s:= RequestParams;
-  //SplitStringAt(s, '?');
-  while s <> '' do begin
-    s1:= SplitString(s,'&');
-    n:= SplitString(s1, '=');
-    Result:= AddToTable(Result, n, s1);
-  end;
+  try
+    c:= CONTEXT();
+    Result:= val_null;
+    s:= RequestParams;
+    //SplitStringAt(s, '?');
+    while s <> '' do begin
+      s1:= SplitString(s,'&');
+      n:= SplitString(s1, '=');
+      Result:= AddToTable(Result, n, s1);
+    end;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function cgi_get_cwd(): value; cdecl;
 var
   c: PContext;
 begin
-  c:= CONTEXT();
-  Result:= alloc_string(ExtractFilePath(c.r.FileName));
+  try
+    c:= CONTEXT();
+    Result:= alloc_string(ExtractFilePath(c.r.FileName));
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function cgi_set_main(f: value): value; cdecl;
 var
   c: PContext;
 begin
-  c:= CONTEXT();
-  if val_is_null(f) then begin
-    c.main:= nil;
-  end else begin
-    val_check_function(f, 0);
-    c.main:= f;
-  end;
-  Result:= val_true;
+  try
+    c:= CONTEXT();
+    if val_is_null(f) then begin
+      c.main:= nil;
+    end else begin
+      val_check_function(f, 0);
+      c.main:= f;
+    end;
+    Result:= val_true;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function cgi_flush(): value; cdecl;
 var
   c: PContext;
 begin
-  c:= CONTEXT();
-  send_headers(c);
-  Result:= val_null;
+  try
+    c:= CONTEXT();
+    //send_headers(c);
+    c.headers_sent:= true;
+    c.r.H.FlushData;
+    Result:= val_null;
+  except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
 function cgi_get_config(): value; cdecl;
@@ -674,7 +710,7 @@ begin
 
   if False then DbgTraceFmt('running module %s caching is %d - request: %s',
     [FileName, ord(config.use_cache), H.FPostData]);
-  module:= ModNeko.FindCache(@Self);
+  module:= ModNeko.FindCache(@Self); // Aquires the Lock 
   //module.Lock.Enter;
   try
     if module.isCached(@Self)
