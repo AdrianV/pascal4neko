@@ -36,11 +36,61 @@ uses Classes, SysUtils, typinfo,
   synacode, synautil, mimemess, authentication, httpServer,
   neko, nekoHelper, p4nHelper, SyncObjs;
 
+const
+  daIdle = 0;
+  daRunning = 1;
+  daRunningAcc = 2;
+  daFinished = 3;
+  daError = 4;
+  daShuttdown = 5;
+  qsAccepting = 0;
+  qsShutdown = -1;
+
 type
   PIPInfo = ^TIPInfo;
   PSettings = ^TSettings;
   PCGIResult = ^TCGIResult;
   PHTTPRequest = ^THTTPRequest;
+  TModeNekoParser = class;
+  TRequestQueue = record
+    req: PHTTPRequest;
+    next: Integer;
+    prior: Integer;
+  end;
+  TContext = record
+	  r: PHTTPRequest;
+	  main: value;
+	  //post_data: value;
+	  content_type: value;
+	  headers_sent: Boolean;
+    classes: value;
+  end;
+  PContext = ^TContext;
+  TNekoRequestThread = class(TThread)
+    FFileName: string;
+    FHash: Integer;
+    FTime: TDateTime;
+    FLastTimeCheck: Cardinal;
+    FReload: Integer;
+    //Fvm: Pneko_vm;
+    Fctx: TContext;
+    //FRequestQueue: array of TRequestQueue;
+    //FQueueFree: Integer;
+    FFirst: PHTTPRequest;
+    FLast: PHTTPRequest;
+    FQueueState: Integer;
+    FQueueLock: TCriticalSection;
+    //FHasRequest: TEvent;
+    FNekoParser: TModeNekoParser;
+  protected
+    procedure Execute; override;
+    procedure PushRequest(req: PHTTPRequest);
+    function PopRequest(): PHTTPRequest;
+    procedure ShutDown;
+  public
+    constructor Create(AParent: TModeNekoParser; const AFileName: string; req: PHTTPRequest);
+    destructor Destroy; override;
+  end;
   TCacheMod = class
     main: Pvalue;
     FileName: string;
@@ -56,32 +106,34 @@ type
   TModeNekoParser = class(TPreParser)
   private
     var FCache: TThreadList;
+    var FModules: TThreadList;
     function ClearCache(Index: Integer): Boolean;
     function FindCache(r: PHTTPRequest): TCacheMod;
+    function RunRequest(r: PHTTPRequest): TNekoRequestThread;
+    procedure Kill(m: TNekoRequestThread);
+    procedure RemoveModule(m: TNekoRequestThread);
+    procedure ShutDown;
   protected
     function Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode; override;
   public
   	constructor Create(Server: TvsHTTPServer); override;
     destructor Destroy; override;
   end;
+  TRequestResult = (rrOk, rrException, rrTimeout, rrShutdown);
   THTTPRequest = record
     H: TvsHTTPHandler;
     FileName: string;
     ModNeko: TModeNekoParser;
-    FTime: Integer;
+    //FTime: Integer;
     Hash: Integer;
+    StartTick: Cardinal;
+    DataAvailable: Integer;
+    FNext, FPrior: PHTTPRequest;
+    FHandle: THandle;
     procedure Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
-    function DoRequest: Boolean;
+    function DoRequest: Boolean; deprecated;
+    function WaitForRequest: TRequestResult;
   end;
-  TContext = record
-	  r: PHTTPRequest;
-	  main: value;
-	  //post_data: value;
-	  content_type: value;
-	  headers_sent: Boolean;
-    classes: value;
-  end;
-  PContext = ^TContext;
 
 var
   __k_mod_neko: Tvkind;
@@ -114,32 +166,26 @@ var
     use_prim_stats: False; gc_period: 10);
 
 const
-  deltaA = Ord('a') - Ord('A');
   trace_module_loading = false;
 
-
-function hashString(const s: string; CaseSensitive: Boolean): Integer; inline;
-var
-  i, v: Integer;
-begin
-  result:= 0;
-  for i := 1 to length(s) do begin
-    v:= Ord(s[i]);
-    if CaseSensitive or (v < Ord('A')) or (v > Ord('Z')) then
-      Result:= (223* result) + v
-    else
-      Result:= (223* result) + v + deltaA;
-  end;
-end;
 
 function CONTEXT: PContext; inline;
 begin
 	Result:= neko_vm_custom(neko_vm_current(),k_mod_neko);
 end;
 
+function TickDelta(tnow, tlast: Cardinal): Cardinal; inline;
+begin
+	if tnow >= tlast then
+  	Result:= tnow - tlast
+  else begin
+    Result:= (High(Cardinal) - tlast) + tnow;
+  end;
+end;
+
 function TCacheMod.isCached(r: PHTTPRequest): Boolean;
 begin
-  Result:= (main^ <> nil) and (time = r.FTime);
+  Result:= (main^ <> nil) and (time = FileAge(r.FileName));
 end;
 
 procedure gc_major();
@@ -193,8 +239,11 @@ var
   c: PHTTPRequest;
 begin
 	try
-    c := PHTTPRequest(param);
-    if c = nil then c := CONTEXT().r;
+    //c := PHTTPRequest(param);
+    //if c = nil then
+    c := CONTEXT().r;
+    if c <> param then 
+      DbgTrace('print request is wonky');
     if (size = -1) then size := strlen(data);
     c.H.SendData(data, size);
   except on e: Exception do val_throw(NekoSaveException(e)); end;
@@ -356,9 +405,9 @@ begin
     c:= CONTEXT();
     Result:= val_null;
     with c.r.H.FRequest.Header do
-    for i := 0 to Count - 1 do begin
-      Result:= AddToTable(Result, Names[i], ValueFromIndex[i]);
-    end;
+      for i := 0 to Count - 1 do begin
+        Result:= AddToTable(Result, Key[i], ValueAt[i]);
+      end;
   except on e: Exception do val_throw(NekoSaveException(e)); end;
 end;
 
@@ -603,35 +652,65 @@ constructor TModeNekoParser.Create(Server: TvsHTTPServer);
 begin
   inherited;
   FCache:= TThreadList.Create;
+  FModules:= TThreadList.Create;
 end;
 
 destructor TModeNekoParser.Destroy;
 begin
+  ShutDown;
 	while ClearCache(0) do;
   FreeAndNil(FCache);
+  FreeAndNil(FModules);
   inherited;
 end;
 
 function TModeNekoParser.Execute(const FileName: string; Handler: TvsHTTPHandler): THttpConnectionMode;
 var
   req: THTTPRequest;
+  m: TNekoRequestThread;
 begin
-  //InitModNeko;
-  Handler.FMode:= cmDONE;
-  //DbgTrace(FileName);
-  if FCache <> nil then begin
-    req.Create(Self, Handler, FileName);
-    Handler.FResponse.ResponseCode := 200;
-    if not req.DoRequest then
-      Handler.FResponse.ResponseCode := 503; //Service unavailable
-    if (Handler.FResponse.ResponseCode <> 200)
-      or (Handler.FRequest.Command = 'POST')
-    then
-      Result := cmCLOSE
-    else
-      Result := cmDONE;
+  if True then begin
+    if FModules <> nil then begin
+      req.Create(Self, Handler, FileName);
+      Handler.FResponse.ResponseCode := 200;
+      m:= RunRequest(@req);
+      case req.WaitForRequest of
+        rrOk: begin
+          Result:= cmDONE;
+        end;
+        rrTimeout: begin
+          Handler.FResponse.ResponseCode := 408;
+          Result:= cmCLOSE;
+          RemoveModule(m);
+        end;
+        rrException: begin
+          Handler.FResponse.ResponseCode := 500;
+          Result:= cmCLOSE;
+        end;
+        rrShutdown: begin
+          Handler.FResponse.ResponseCode := 503;
+          Result:= cmCLOSE;
+        end;
+      end;
+    end;
+  end else begin
+    //InitModNeko;
+    Handler.FMode:= cmDONE;
+    //DbgTrace(FileName);
+    if FCache <> nil then begin
+      req.Create(Self, Handler, FileName);
+      Handler.FResponse.ResponseCode := 200;
+      if not req.DoRequest then
+        Handler.FResponse.ResponseCode := 503; //Service unavailable
+      if (Handler.FResponse.ResponseCode <> 200)
+        or (Handler.FRequest.Command = 'POST')
+      then
+        Result := cmCLOSE
+      else
+        Result := cmDONE;
+    end;
+    Result := cmDONE
   end;
-  Result := cmDONE
 end;
 
 function TModeNekoParser.FindCache(r: PHTTPRequest): TCacheMod;
@@ -669,6 +748,90 @@ begin
 end;
 
 
+procedure TModeNekoParser.Kill(m: TNekoRequestThread);
+begin
+
+end;
+
+procedure TModeNekoParser.RemoveModule(m: TNekoRequestThread);
+var
+  modules: TList;
+  i: Integer;
+begin
+  modules:= FModules.LockList;
+  try
+    i:= modules.IndexOf(m);
+    if i >= 0 then begin
+      modules.Delete(i);
+    end;
+  finally
+    FModules.UnlockList;
+  end;
+  m.Free;
+end;
+
+function TModeNekoParser.RunRequest(r: PHTTPRequest): TNekoRequestThread;
+var
+  modules: TList;
+  i: Integer;
+begin
+  modules:= FModules.LockList;
+  try
+    Result:= nil;
+    for i := 0 to modules.Count - 1 do begin
+      Result:= TNekoRequestThread(modules.List^[i]);
+      if (Result.FHash = r.Hash) and SameFileName(Result.FFileName, r.FileName) then
+        break;
+      Result:= nil;
+    end;
+    if Result = nil then begin
+      Result:= TNekoRequestThread.Create(Self, r.FileName, r);
+      modules.Add(Result);
+    end else begin
+      Result.PushRequest(r);
+    end;
+  finally
+    FModules.UnlockList;
+  end;
+end;
+
+procedure TModeNekoParser.ShutDown;
+var
+  modules: TList;
+  i, x: Integer;
+begin
+  modules:= FModules.LockList;
+  try
+    for i := 0 to modules.Count - 1 do begin
+      TNekoRequestThread(modules.List^[i]).ShutDown;
+    end;
+    i:= modules.Count;
+  finally
+    FModules.UnlockList;
+  end;
+  x:= 0;
+  while i > 0 do begin
+    Sleep(10);
+    modules:= FModules.LockList;
+    try
+      inc(x);
+      if (x > 100) then begin
+        while modules.Count > 0 do begin
+          with TNekoRequestThread(modules.List^[0]) do begin
+            DbgTrace('kill module: ' + FFileName);
+            //Suspend;
+            Free;
+          end;
+          modules.Delete(0);
+        end;
+      end;
+      i:= modules.Count;
+    except
+    end;
+    FModules.UnlockList;
+  end;
+end;
+
 { THTTPRequest }
 
 procedure THTTPRequest.Create(AModNeko: TModeNekoParser; AHandler: TvsHTTPHandler; const AFileName: string);
@@ -676,8 +839,12 @@ begin
   ModNeko:= AModNeko;
   H:= AHandler;
   FileName:= AFileName;
-  FTime:= FileAge(AFileName);
+  //FTime:= FileAge(AFileName);
+  DataAvailable:= daIdle;
   Hash:= hashString(AFileName, False);
+  FNext:= nil;
+  FPrior:= nil;
+  FHandle := CreateEvent(nil, False, False, nil);
 end;
 
 function THTTPRequest.DoRequest: Boolean;
@@ -710,7 +877,7 @@ begin
 
   if False then DbgTraceFmt('running module %s caching is %d - request: %s',
     [FileName, ord(config.use_cache), H.FPostData]);
-  module:= ModNeko.FindCache(@Self); // Aquires the Lock 
+  module:= ModNeko.FindCache(@Self); // Aquires the Lock
   //module.Lock.Enter;
   try
     if module.isCached(@Self)
@@ -726,8 +893,8 @@ begin
       end else begin
         module.Cache(nil, @Self);
       end;
-    end else if FTime > 0 then begin
-      if trace_module_loading then DbgTraceFmt('load and run %s age: %d', [FileName, FTime]);
+    end else if FileAge(FileName) > 0 then begin
+      if trace_module_loading then DbgTraceFmt('load and run %s age: %d', [FileName, FileAge(FileName)]);
       ctx.main:= nil;
       pUri:= PAnsiChar(H.FRequest.ParamRaw);
       mload:= EmbeddedLoader(@pUri, 1);
@@ -761,9 +928,76 @@ begin
   //H.Log('neko request done');
 end;
 
+//function NtDelayExecution(aAlertable: BOOL; var aInterval: Int64): DWORD; stdcall; external 'ntdll.dll';
+
+function THTTPRequest.WaitForRequest: TRequestResult;
+var
+  delta: Cardinal;
+  FLastError: Integer;
+
+  function ShortWait(TimeOut: LongWord): TWaitResult;
+  begin
+    case WaitForSingleObject(FHandle, Timeout) of
+      WAIT_ABANDONED: Result := wrAbandoned;
+      WAIT_OBJECT_0: Result := wrSignaled;
+      WAIT_TIMEOUT: Result := wrTimeout;
+      WAIT_FAILED:
+        begin
+          Result := wrError;
+          FLastError := GetLastError;
+        end;
+    else
+      Result := wrError;
+    end;
+  end;
+
+var
+  delay: Int64;
+begin
+  delay:= -1;
+  while true do begin
+    case InterlockedCompareExchange(DataAvailable, -1, -1) of
+      daIdle: ShortWait(2);
+      daRunning: begin
+        if InterlockedCompareExchange(DataAvailable, daRunningAcc, daRunning) = daRunning
+        then begin
+          StartTick:= GetTickCount;
+        end;
+      end;
+      daRunningAcc: begin
+        delta:= TickDelta(GetTickCount, StartTick);
+        if delta > 5 * 60 * 1000 then begin // TODO flexibel timeout
+          Result:= rrTimeout;
+          break;
+        end else if delta > 5 then begin
+          ShortWait(100);
+        end else begin
+          ShortWait(5);
+          //NtDelayExecution(True, delay);
+        end;
+      end;
+      daFinished: begin
+        Result:= rrOk;
+        break;
+      end;
+      daError: begin
+        Result:= rrException;
+        break;
+      end;
+      daShuttdown: begin
+        Result:= rrShutdown;
+        break;
+      end;
+    end;
+  end;
+  CloseHandle(FHandle);
+end;
+
 { TCacheMod }
 
 procedure TCacheMod.Cache(AMain: value; r: PHTTPRequest);
+var
+  ft: Integer;
 begin
   if AMain = nil then begin
     main^:= nil;
@@ -771,8 +1005,9 @@ begin
     gc_major();
   end else begin
     main^:= AMain;
-    if r.FTime > 0 then
-      Time:= r.FTime;
+    ft:= FileAge(r.FileName);
+    if ft > 0 then
+      Time:= ft;
   end;
 end;
 
@@ -781,7 +1016,7 @@ begin
   main:= alloc_root(1);
   main^:= AMain;
   FileName:= r.FileName;
-  Time:= r.FTime;
+  Time:= FileAge(r.FileName);
   Hits:= 0;
   Lock:= TCriticalSection.Create;
   Hash:= r.Hash;
@@ -795,6 +1030,203 @@ begin
 end;
 
 
+
+{ TNekoRequestThread }
+
+constructor TNekoRequestThread.Create(AParent: TModeNekoParser; const AFileName: string; req: PHTTPRequest);
+var
+  i: Integer;
+begin
+  FFileName:= AFileName;
+  FHash:= hashString(AFileName, False);
+  if not FileAge(AFileName, FTime) then FTime:= 0.0; 
+  FLastTimeCheck:= GetTickCount;
+  //SetLength(FRequestQueue, 1);
+  //FRequestQueue[0].req:= req;
+  //FRequestQueue[0].next:= -1;
+  //FRequestQueue[0].prior:= -1;
+  //FQueueFree:= -1;
+  FFirst:= req;
+  FLast:= req;
+  FQueueLock:= TCriticalSection.Create;
+  //FHasRequest:= TEvent.Create(nil, False, False, '', False);
+  FNekoParser:= AParent;
+  FQueueState:= qsAccepting + 1;
+  inherited Create(False);
+end;
+
+destructor TNekoRequestThread.Destroy;
+begin
+  ShutDown;
+  //FreeAndNil(FHasRequest);
+  FreeAndNil(FQueueLock);
+  inherited;
+end;
+
+procedure TNekoRequestThread.Execute;
+type
+  PPneko_vm = ^Pneko_vm;
+var
+  //req: PHTTPRequest;
+  exc, mload: value;
+  pUri: PAnsiChar;
+  main: Pvalue;
+  vm: PPneko_vm;
+
+
+  procedure SendException;
+  begin
+    Fctx.r.H.SendData('Neko Exception');
+    p4nHelper.DbgTrace(neko.ReportException(vm^, exc, true));
+    InterlockedExchange(Fctx.r.DataAvailable, daError);
+  end;
+
+begin
+  if FTime > 0 then begin
+    neko_thread_register(true);
+    main:= nil;
+    vm:= nil;
+    try
+      vm:= Pointer(alloc_root(1));
+      vm^:= neko_vm_alloc(nil);
+      neko_vm_set_custom(vm^, k_mod_neko, @Fctx);
+      neko_vm_jit(vm^, 1);
+      main:= alloc_root(1);
+      Fctx.r:= PopRequest;
+      if Fctx.r <> nil then begin
+        //Fctx.r.StartTick:= GetTickCount;
+        InterlockedExchange(Fctx.r.DataAvailable, daRunning);
+        neko_vm_redirect(vm^, @request_print, Fctx.r); //@ctx);
+        neko_vm_select(vm^);
+        Fctx.main:= nil;
+        pUri:= PAnsiChar(Fctx.r^.H.FRequest.ParamRaw);
+        mload:= EmbeddedLoader(@pUri, 1);
+        exc:= nil;
+        val_ocall(mload, val_id('loadmodule'), [alloc_string(FFileName), mload], @exc);
+        if (exc = nil) and (Fctx.main <> nil) and config.use_cache then begin
+          if trace_module_loading then DbgTraceFmt('cache %s', [FFileName]);
+          main^:= Fctx.main;
+          InterlockedExchange(Fctx.r.DataAvailable, daFinished);
+        end else begin
+          if true then DbgTraceFmt('%s does not want to be cached', [FFileName]);
+          if exc <> nil then SendException;
+          Fctx.main:= nil;
+        end;
+        Windows.SetEvent(Fctx.r.FHandle);
+        while Fctx.main <> nil do begin
+          if InterlockedCompareExchange(FQueueState, -1, -1) <> qsAccepting then begin
+            Fctx.r:= PopRequest;
+            if Fctx.r <> nil then begin
+              //Fctx.r.StartTick:= GetTickCount;
+              if InterlockedCompareExchange(Fctx.r.DataAvailable, daRunning, daIdle) <> daIdle then begin
+                DbgTrace('unexpected DataState');
+                InterlockedExchange(Fctx.r.DataAvailable, daRunning);
+              end;
+              neko_vm_redirect(vm^, @request_print, Fctx.r); //@ctx);
+              neko_vm_select(vm^);
+              exc:= nil;
+              if InterlockedCompareExchange(FReload, 0, 1) = 1 then begin
+                val_ocall(mload, val_id('loadmodule'), [alloc_string(FFileName), mload], @exc);
+                if exc <> nil then begin
+                  Fctx.main:= nil;
+                end;
+              end else begin
+                val_callEx(val_null, Fctx.main, nil, 0, @exc);
+              end;
+              if exc <> nil then begin
+                SendException;
+              end else begin
+                InterlockedExchange(Fctx.r.DataAvailable, daFinished);
+              end;
+              Windows.SetEvent(Fctx.r.FHandle);
+              if not config.use_cache then begin
+                Fctx.main:= nil;
+              end else
+                main^ := Fctx.main;
+            end;
+          end else
+            Sleep(1);
+        end;
+      end;
+    except
+    end;
+    main^ := nil;
+    vm^:= nil;
+    free_root(main);
+    free_root(Pvalue(vm));
+    gc_major();
+    neko_thread_register(false);
+  end else begin
+    if trace_module_loading then DbgTraceFmt('not found %s', [FFileName]);
+  end;
+  FNekoParser.RemoveModule(Self);
+end;
+
+function TNekoRequestThread.PopRequest: PHTTPRequest;
+var
+  i: Integer;
+begin
+  if InterlockedCompareExchange(FQueueState, -1, -1) >= qsAccepting then begin
+    FQueueLock.Acquire;
+    Result:= FFirst;
+    if Result <> nil then begin
+      FFirst:= FFirst.FNext;
+      if FFirst = nil then
+        FLast:= nil
+      else
+        FFirst.FPrior:= nil;
+    end;
+    FQueueLock.Release;
+    InterlockedDecrement(FQueueState);
+  end else begin
+    Result:= nil;
+    Fctx.main:= nil;
+  end;
+end;
+
+procedure TNekoRequestThread.PushRequest(req: PHTTPRequest);
+var
+  fa: TDateTime;
+  t: Cardinal;
+begin
+  if InterlockedCompareExchange(FQueueState, -1, -1) >= qsAccepting then begin
+    FQueueLock.Acquire;
+    if FFirst = nil then begin
+      FFirst:= req;
+      FLast:= req;
+    end else begin
+      req.FPrior:= FLast;
+      FLast.FNext:= req;
+      FLast:= req;
+    end;
+    t:= GetTickCount;
+    if TickDelta(t, FLastTimeCheck) > 10000 then begin
+      if FileAge(FFileName, fa)
+        and (abs(fa - FTime) > 1 / (24.0 * 60))
+      then begin
+        FTime:= fa;
+        InterlockedExchange(FReload, 1);
+      end;
+      FLastTimeCheck:= t;
+    end;
+    FQueueLock.Release;
+    //FHasRequest.SetEvent;
+    InterlockedIncrement(FQueueState);
+  end else begin
+    InterlockedExchange(req.DataAvailable, daShuttdown);
+  end;
+end;
+
+procedure TNekoRequestThread.ShutDown;
+begin
+  if InterlockedCompareExchange(FQueueState, qsShutdown, qsShutdown) <= qsShutdown
+  then exit;
+  InterlockedExchange(FQueueState, qsShutdown);
+  FQueueLock.Acquire;
+  Fctx.main:= nil;
+  FQueueLock.Release;
+  //FHasRequest.SetEvent;
+end;
 
 initialization
   //Set8087CW($27F);
