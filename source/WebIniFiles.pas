@@ -88,7 +88,7 @@ function CheckUpdate(const AppName: string = ''; const AParams: string = ''; ACa
 procedure SetThreadEnv(const Name, Value: String);
 
 implementation
-
+uses ParseTool;
 
 type
   TLoadStream = class (TInterfacedObject, ILoadStream)
@@ -198,86 +198,91 @@ var
   stack: PExpandStack;
 
 
-  function Convert(s: string): string;
+  function Convert(const s: string): string;
   var
-    s1, p1, p2, p3, sIdent, sSec: string;
+    all, s1, p1, p2, p3: WeakSlice;
+    sIdent, sSec, temp: string;
     ini: TWebIniFile;
     x: Integer;
   begin
     sIdent:= FIdent;
     sSec:= FSec;
-    s1:= SplitString(s, ':');
+    all.Assign(s);
+    s1:= all.SplitAt(':');
     ini:= nil;
-    if SameText(s1, 'ini') then try
+    if s1.IEqual('ini') then try
       inc(Flevel);
       if Flevel < 30 then begin
-        p1:= SplitString(s, ',');
-        p2:= SplitString(s, ',');
-        p3:= SplitString(s, '|');
-        if p1 <> '' then
-          ini:= GetIni(p1)
+        p1:= all.SplitAt(',');
+        p2:= all.SplitAt(',');
+        p3:= all.SplitAt('|');
+        if not p1.Empty then
+          ini:= GetIni(p1.Value)
         else ini:= Self;
-        if (p2 = '') and (s = '') then begin
-          s:= FileName;
-          if SameText(p3, 'Name') then
-            s:= ExtractFileName(s)
-          else if SameText(p3, 'Path') then
-            s:= ExtractFilePathWeb(s)
-          else if SameText(p3, 'Drive') then
-            s:= ExtractFileDrive(s)
-          else if SameText(p3, 'Extension') then
-            s:= ExtractFileExt(s)
-          else if SameText(p3, 'Dir') then
-            s:= ExtractFileDir(s)
-        end;
-        Result:= ini.ReadString(p2, p3, s)
+        if p2.Empty and all.Empty then begin
+          if p3.IEqual('Name') then
+            temp:= ExtractFileName(FileName)
+          else if p3.IEqual('Path') then
+            temp:= ExtractFilePathWeb(FileName)
+          else if p3.IEqual('Drive') then
+            temp:= ExtractFileDrive(FileName)
+          else if p3.IEqual('Extension') then
+            temp:= ExtractFileExt(FileName)
+          else if p3.IEqual('Dir') then
+            temp:= ExtractFileDir(FileName)
+          else
+            temp:= FileName;
+        end else
+          temp:= all.Value;
+        Result:= ini.ReadString(p2.Value, p3.Value, temp)
       end else
         Result:= '';
     finally
       dec(Flevel);
-    end else if SameText(s1, 'env') then begin
-      p1:= SplitString(s, '|');
-      x:= FindThreadEnv(overrideEnv, p1);
+    end else if s1.IEqual('env') then begin
+      p1:= all.SplitAt('|');
+      temp:= p1.Value;
+      x:= FindThreadEnv(overrideEnv, temp);
       if (x >= 0) and (overrideEnv[x].Value <> '') then
         Result:= overrideEnv[x].Value
       else
-        Result:= GetEnvironmentVariable(p1);
+        Result:= GetEnvironmentVariable(temp);
       //GetEnvironmentVar(p1, Result, True);
       if Result = '' then
-        Result:= s;
+        Result:= all.Value;
       //if p2 <> '' then
       //  Result:= AddPath(Result, p2);
-    end else if SameText(s1, 'cwd') then begin
+    end else if s1.IEqual('cwd') then begin
       GetDir(0, Result);
-      if s <> '' then
-        Result:= AddPath(Result, s);
-    end else if SameText(s1, 'appath') then begin
-      Result:= AddPath(ApplicationPath, s);
-    end else if SameText(s1, 'ProgramData') then begin
-      Result:= AddPath(ProgramData, s);
-    end else if SameText(s1, 'reg') then begin
-      p1:= SplitString(s, ',');
-      p2:= SplitString(s, ',');
-      p3:= SplitString(s, '|');
-      with TRegIniFile.Create(p1) do try
-        Result:= ReadString(p2, p3, s);
+      if not all.Empty then
+        Result:= AddPath(Result, all.Value);
+    end else if s1.IEqual('appath') then begin
+      Result:= AddPath(ApplicationPath, all.Value);
+    end else if s1.IEqual('ProgramData') then begin
+      Result:= AddPath(ProgramData, all.Value);
+    end else if s1.IEqual('reg') then begin
+      p1:= all.SplitAt(',');
+      p2:= all.SplitAt(',');
+      p3:= all.SplitAt('|');
+      with TRegIniFile.Create(p1.Value) do try
+        Result:= ReadString(p2.Value, p3.Value, all.Value);
       finally
         Free;
       end;
-    end else if s1 = '<' then begin
+    end else if s1.Equal('<') then begin
       Result:='{';
-    end else if s1 = '>' then begin
+    end else if s1.Equal('>') then begin
       Result:='}';
-    end else if s1 = '^' then begin
+    end else if s1.Equal('^') then begin
       Result:='^';
-    end else if s1 = '~' then begin
+    end else if s1.Equal('~') then begin
       Result:='~';
-    end else if SameText(s1, 'key') then begin
+    end else if s1.IEqual('key') then begin
       Result:=FIdent;
-    end else if SameText(s1, 'sec') then begin
+    end else if s1.IEqual('sec') then begin
       Result:=FSec;
     end else
-      Result:= s1;
+      Result:= s1.Value;
     FIdent:= sIdent;
     FSec:= sSec;
   end;
