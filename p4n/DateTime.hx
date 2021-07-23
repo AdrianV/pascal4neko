@@ -68,6 +68,8 @@ typedef WeekNumber = {
 	encoded in the Int part of the Float counted from 12/30/1899. The Time value is encoded in the fractional part of the Float.
 **/
 #if (js && !nodejs) @:expose("p4n.DateTime") #end
+@:nullSafety
+//@:notNull
 abstract DateTime(Float) from Float to Float
 {
 	static inline var DATE_DELTA: Int = 693594;
@@ -86,21 +88,9 @@ abstract DateTime(Float) from Float to Float
 	static public inline var SECONDS: Float = 1 / SECONDS_PER_DAY;
 	static public inline var UNIX_START = 25569;
 
-	#if (!macro)
-  static var MD0S(default, never): Array<Int> = getMDSum(false);
-  static var MD1S(default, never): Array<Int> = getMDSum(true);
-	#end
-  macro static public function getMDSum(isLeap: Bool) {
-		var md = isLeap ? MD1 : MD0;
-    var result = new Array<Int>();
-    var sum = 0;
-    for (d in md) {
-    	sum += d;
-      result.push(sum);
-   	}
-  	var exprs = [for(value in result) macro $v{value}];
-  	return macro $a{exprs};
-  }
+  static final MD0S = [0,31,59,90,120,151,181,212,243,273,304,334,365];
+
+	static final MD1S = [0,31,60,91,121,152,182,213,244,274,305,335,366];
 
 	/**
 	 * the default first day in the week is Monday. Adjust to your needs
@@ -134,9 +124,10 @@ abstract DateTime(Float) from Float to Float
 	@:op(A >= B) static function gte1(lhs:DateTime, rhs:Float):Bool;
 	@:op(A > B) static function gt1(lhs:DateTime, rhs:Float):Bool;
 	
-	public inline function new(v: Float) {
-		this = v;
-	}
+	public inline function new(v: Float) this = v;
+	
+	//@:to inline function toFloat(): Float return this;
+	//@:from static inline function fromFloat(v: Float): DateTime return new DateTime(v);
 	
 	public inline function isInitialized(): Bool {
 		#if (neko || js)
@@ -150,9 +141,8 @@ abstract DateTime(Float) from Float to Float
 		return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 	}
 	
-	#if (!macro)
 	public static function encode(year: Int, month: Int, day: Int): DateTime {
-		var dayTable = if (isLeapYear(year)) MD1 else MD0;
+		final dayTable = if (isLeapYear(year)) MD1 else MD0;
 		if ((year >= 1) && (year <= 9999) && (month >= 1) && (month <= 12) 
 			&& (day >= 1) && (day <= dayTable[month]))
 		{
@@ -207,24 +197,13 @@ abstract DateTime(Float) from Float to Float
 				d += D1;
 			}
 			y += i;
-			var dayTable = if (isLeapYear(y)) MD1S else MD0S;
+			final dayTable = if (isLeapYear(y)) MD1S else MD0S;
       var m = Std.int(d / 29) + 1;
       var dmax = dayTable[m-1];
       if (d < dmax) {
         m--;
         dmax = dayTable[m-1];
       }
-      #if false
-			var m = 1; // Std.int(d / 29);
-			while (true) {
-				i = dayTable[m];
-				if (d < i) break;
-				d -= i;
-				m++;
-			}
-			var res: DateRec = { day: d + 1, month: m, year: y };
-			return res;
-      #end
       return { day: d - dmax + 1, month: m, year: y };
 		}
 	}
@@ -387,7 +366,7 @@ abstract DateTime(Float) from Float to Float
 			case TNull : return 0;
 			case TInt : return fromInt(d);
 			case TFloat : return new DateTime(d);
-			case TObject : if ( Std.is(d, Date) ) return fromDate(d);
+			case TObject : if ( Std.isOfType(d, Date) ) return fromDate(d);
 			default:
 		}
 		return 0;
@@ -450,9 +429,30 @@ abstract DateTime(Float) from Float to Float
 	 * return local time when this time is utc, otherwhise junk !
 	 */
 	public inline function localTime(): DateTime return this - getTimeOffset();
-	#end
 	
 }
+
+#if (false)
+
+class M {
+
+  macro static public function getMDSum(isLeap: Bool) {
+    final exprs = [macro $v{0}, macro $v{31}];
+		exprs[12] = null;
+    var sum = 31;
+    for (m in 2...13) {
+    	sum += switch m {
+				case 4 | 6 | 9 | 11 : 30;
+				case 2: isLeap ? 29 : 28;
+				case _: 31;
+			};
+      exprs[m] = macro $v{sum};
+   	}
+  	return macro $a{exprs};
+  }
+	
+}
+#end
 
 #if (js && !nodejs && haxe_ver < 3.1)
 private class Init {
