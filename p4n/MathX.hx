@@ -74,9 +74,8 @@ package p4n;
 	
 	static public inline function clamp<T:Float>(x:T, min:T, max:T):T {
 		if (x >= min) {
-			if (x <= max) return x;
-			return max;
-		}
-		return min;
+			if (x > max) x = max;
+		} else x = min;
+		return x;
 	}
 }

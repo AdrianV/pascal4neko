@@ -149,7 +149,7 @@ class Tools
 		return o;
 	}
 
-	public static function object2Ansi(o: Dynamic): Dynamic untyped {
+	public static function object2Ansi(o: {}): Dynamic untyped {
 		if (o == null || __dollar__typeof(o) != 5) return o;
 		var f = __dollar__objfields(o);
 		var i = 0;
@@ -175,7 +175,7 @@ class Tools
 		return o;
 	}
 
-	static public function toAnsi(o: Dynamic): Dynamic untyped {
+	static public function toAnsi(o: {}): Dynamic untyped {
 		switch( __dollar__typeof(v) ) {
 		case 0: return v;
 		case 1: return v;

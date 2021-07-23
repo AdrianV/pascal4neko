@@ -512,6 +512,7 @@ procedure UnloadNeko;
 function LoadModule(const AFile: string): value;
 procedure ExecuteModuleMain(AModule: value);
 function ReportException(vm: Pneko_vm; exc: value; isExc: BOOL ): string;
+function NekoExceptionToString(exc: value): string;
 procedure SetProto(var v: value; proto: value);
 procedure TPointer_free(v: value); cdecl;
 procedure TObject_free(v: value); cdecl;
@@ -1212,6 +1213,15 @@ begin
   Result:= val_string(buffer_to_string(b));
 end;
 
+function NekoExceptionToString(exc: value): string;
+var
+  b: Pbuffer;
+begin
+	b:= alloc_buffer(nil);
+	val_buffer(b, exc);
+  Result:= val_string(buffer_to_string(b));
+end;
+
 function LoadModule(const AFile: string): value;
 var
   loader, exc, f: value;
@@ -1228,8 +1238,8 @@ begin
   Result:= val_callEx(loader, f, @args[0], 2, @exc);
   Set8087CW(FPUCW);
   if (exc <> nil) then begin
-    ReportException(EmbeddedNeko, exc, True);
-    raise ENekoException.Create(ReportException(EmbeddedNeko, exc, True));
+    //ReportException(EmbeddedNeko, exc, True);
+    raise ENekoException.Create(ReportException(EmbeddedNeko, exc, True) + ' while loading ' + AFile);
   end;
 end;
 

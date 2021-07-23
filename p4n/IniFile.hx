@@ -123,8 +123,8 @@ class IniFile extends CustomIniFile
 		super(I.createIniFile(AFileName), AFileName);
 	}
 	
-	#if ! macro
-	static public function __init__() {
+	@:keep 
+	static public dynamic function __initImpl__() {
 		var call = null;
 		try {
 		    var c1 = neko.Lib.load('p4n_std.dll', '_init_std', 1);
@@ -134,7 +134,11 @@ class IniFile extends CustomIniFile
 		}
 		if (call != null) call(I);
 		TObject.boot();
+		__initImpl__ = function() {};
 	}
-	#end
+
+	static public function __init__() {
+		__initImpl__();
+	}
 	
 }
