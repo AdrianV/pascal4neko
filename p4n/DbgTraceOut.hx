@@ -43,17 +43,22 @@ class DbgTraceOut
 		return (_moduleName != null) ?	_moduleName : getModuleName();
 	}
 
-	public static dynamic function trace( v : Dynamic, ?infos : haxe.PosInfos ) : Void {
-		var prefix = new StringBuf();
-		if (infos != null) {
+	public static function tracePrefix(?pos : haxe.PosInfos): StringBuf {
+		final prefix = new StringBuf();
+		if (pos != null) {
 			if (logModule) prefix.add(getModuleName());
-			if (logFilepos) prefix.add(filePos(infos.fileName, infos.lineNumber));
-			if (logClass) prefix.add(":" + infos.className);
-			if (logMethod) prefix.add("." + infos.methodName);
+			if (logFilepos) prefix.add(filePos(pos.fileName, pos.lineNumber));
+			if (logClass) prefix.add(":" + pos.className);
+			if (logMethod) prefix.add("." + pos.methodName);
 			prefix.add(": ");
 		}
-		trace_out(prefix.toString(), v);
+		return prefix;
 	}
+
+	public static dynamic function trace( v : Dynamic, ?pos : haxe.PosInfos ) : Void {
+		trace_out(inline tracePrefix(pos).toString(), v);
+	}
+
 	static public function __init__() {
 		try {	
 			trace_out = neko.Lib.load('p4n', 'trace_out', 2);
