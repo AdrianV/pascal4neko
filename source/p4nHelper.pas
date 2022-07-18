@@ -27,7 +27,11 @@ unit p4nHelper;
 interface
 uses Sysutils
 {$IFNDEF FPC}
+  {$IFDEF  COMPILERXE2_UP}
+  ,VCL.Forms
+  {$ELSE}
   ,Forms
+  {$ENDIF}
 {$ENDIF}
 {$IFDEF MSWINDOWS}
 	,Windows, ShellApi
