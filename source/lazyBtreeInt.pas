@@ -1,3 +1,27 @@
+{**************************************************************************************************}
+{                                                                                                  }
+{ The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License"); }
+{ you may not use this file except in compliance with the License. You may obtain a copy of the    }
+{ License at http://www.mozilla.org/MPL/                                                           }
+{                                                                                                  }
+{ Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF   }
+{ ANY KIND, either express or implied. See the License for the specific language governing rights  }
+{ and limitations under the License.                                                               }
+{                                                                                                  }
+{ The Original Code is lazyBtreeInt.pas.                                                           }
+{                                                                                                  }
+{ The Initial Developer of the Original Code is Adrian Veith <adrian@veith-system.de>.             }
+{ Created by Adrian Veith Copyright (C) Adrian Veith. All Rights Reserved.                         }
+{                                                                                                  }
+{ Contributors:                                                                                    }
+{   Adrian Veith                                                                                   }
+{                                                                                                  }
+{**************************************************************************************************}
+{                                                                                                  }
+{ Integer variant of the lazyBtree template                                                        }
+{                                                                                                  }
+{**************************************************************************************************}
+
 unit lazyBtreeInt;
 interface
 uses SysUtils, Variants;
@@ -6,7 +30,7 @@ type
   TValueType = Pointer;
   TKeyType = Integer;
 {$define INC_INTERFACE}
-{$I lazybtree.inc}
+{$I tplbtree.inc}
 type
   //TVisitLeave = procedure(const key: Integer; var value: Pointer) of object;
   TBTreeInt = class
@@ -17,6 +41,8 @@ type
     destructor Destroy; override;
     procedure Clear;
     function Delete(AKey: Integer): TValueType;
+    function GetAllKeys(): TKeyTypeArray;
+    function GetAllValues(): TValueTypeArray;
     function GetInline(AKey: Integer): TValueType; inline;
     function Get(AKey: Integer): TValueType;
     function IsEmpty: Boolean; inline;
@@ -50,7 +76,7 @@ begin
 end;
 
 {$undef INC_INTERFACE}
-{$I lazybtree.inc}
+{$I tplbtree.inc}
 
 
 { TLazyBTree }
@@ -104,6 +130,40 @@ begin
   Result:= GetInline(AKey);
 end;
 
+procedure CollectKey(Data: Pointer; const key: TKeyType; var value: TValueType);
+var
+  len: Integer;
+begin
+  len:= Length(TKeyTypeArray(Data^));
+  SetLength(TKeyTypeArray(Data^), len + 1);
+  TKeyTypeArray(Data^)[len]:= key;
+end;
+
+function TBTreeInt.GetAllKeys: TKeyTypeArray;
+var visit: TVisitLeaveClosure;
+begin
+  visit.data:= @Result;
+  visit.call:= CollectKey;
+  VisitAllLeaves(FRoot, visit);
+end;
+
+procedure CollectValue(Data: Pointer; const key: TKeyType; var value: TValueType);
+var
+  len: Integer;
+  arr: ^TValueTypeArray absolute Data;
+begin
+  len:= Length(arr^);
+  SetLength(arr^, len + 1);
+  arr^[len]:= value;
+end;
+
+function TBTreeInt.GetAllValues: TValueTypeArray;
+var visit: TVisitLeaveClosure;
+begin
+  visit.data:= @Result;
+  visit.call:= CollectValue;
+  VisitAllLeaves(FRoot, visit);
+end;
 
 function TBTreeInt.Put(AKey: Integer; AValue: TValueType): TValueType;
 begin
