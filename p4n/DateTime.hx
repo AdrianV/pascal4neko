@@ -43,7 +43,7 @@ typedef WeekNumber = {
 }
 
 @:forward
-@:enum abstract WeekDays(Int) from Int to Int {
+enum abstract WeekDays(Int) from Int to Int {
 	var Mon = 0;
 	var Tue = 1;
 	var Wed = 2;
