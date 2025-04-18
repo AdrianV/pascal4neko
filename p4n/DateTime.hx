@@ -60,6 +60,9 @@ enum abstract WeekDays(Int) from Int to Int {
 	@:op(A => B) static function qeq(lhs:WeekDays, rhs:WeekDays):Bool;
 	@:op(A > B) static function greater(lhs:WeekDays, rhs:WeekDays):Bool;
 	@:op(A != B) static function neq(lhs:WeekDays, rhs:WeekDays):Bool;
+	public static var days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+	public function toString() return days[this];		
+
 }
 
 
@@ -450,6 +453,7 @@ private class DateTimeFormatter {
 		return full.substring(full.length - 2);
 	}
 
+	static function _a(d: DateTime) return inline d.dayOfWeek().toString();
 	static function _d(d: DateRec) return pad(Std.string(d.day));
 	static function _m(d: DateRec) return pad(Std.string(d.month));
 	static function _y(d: DateRec) return pad(Std.string(d.year % 100));
@@ -488,6 +492,7 @@ private class DateTimeFormatter {
 				n++;
 				if (n < f.length) {
 					switch StringTools.fastCodeAt(f, n) {
+						case 'a'.code : result.push(DateTimePart(_a));
 						case 'd'.code : result.push(DatePart(_d));
 						case 'm'.code : result.push(DatePart(_m));
 						case 'y'.code : result.push(DatePart(_y));
